@@ -9,19 +9,19 @@ For the consolidated progress, completed-work summary, percentage breakdown, and
 
 The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. It does not generate LLVM IR, machine code, executables, or run programs.
 
-The current progress report calculates a **97.15% weighted estimate**, displayed as **97%**. The estimated gap is **2.85 percentage points** on that judgment-based scale. This is not a claim that 97% of the language specification or 97% of the PDF catalogue is implemented.
+The current progress report calculates a **97.25% weighted estimate**, displayed as **97%**. The estimated gap is **2.75 percentage points** on that judgment-based scale. This is not a claim that 97% of the language specification or 97% of the PDF catalogue is implemented.
 
 The old PDF described a 777-concept catalogue across the whole language/compiler project. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
 
 | Front-end catalogue status | Count |
 |---|---:|
-| Implemented to the v1 scoped acceptance level | 32 |
+| Implemented to the v1 scoped acceptance level | 35 |
 | Partially implemented; more acceptance work remains | 0 |
-| Not implemented yet | 8 |
+| Not implemented yet | 5 |
 | **Front-end catalogue total** | **40** |
-| **Still unfinished (partial + not implemented)** | **8** |
+| **Still unfinished (partial + not implemented)** | **5** |
 
-These inventory counts and the 97.15% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
+These inventory counts and the 97.25% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
 
 ## Remaining catalogue entries
 
@@ -52,9 +52,9 @@ These inventory counts and the 97.15% weighted estimate measure different things
 | 465 | Error synchronization | Done | [ERROR_RECOVERY_V1.md](./ERROR_RECOVERY_V1.md) specifies synchronization boundaries; regression tests cover multiple errors and cascading-error suppression. |
 | 466 | Symbol identity | Done | Stable per-analysis identities cover v1 values, functions, record types/fields, builtin types/functions, and references, with HIR identity verification. Module/import/overload identities are excluded by v1 and tracked under 468–470. |
 | 467 | Scope table | Done | [SEMANTICS_V1.md](./SEMANTICS_V1.md) specifies v1 value/function/type namespaces, visibility, shadowing, and block/function lifetime; nested shadowing and HIR scope checks are tested. Module scopes are excluded by v1. |
-| 468 | Module resolver | Not started | Define module identity/search roots/cycles and implement deterministic resolution with positive and negative tests. |
-| 469 | Import resolver | Not started | Implement import paths, aliases, visibility, ambiguity, and missing-import diagnostics. |
-| 470 | Overload candidate set | Not started | Define overload selection and ambiguity rules; test exact, failed, and ambiguous candidate resolution. |
+| 468 | Module resolver | Done | Public API maps validated dotted module identities to `.indi` paths under configured roots; missing and multi-root ambiguous matches are tested. Source loading and parser integration remain future work. |
+| 469 | Import resolver | Done | Manifest API resolves aliases and public exports, diagnoses duplicate aliases/missing modules, and rejects cycles; source-level import syntax is not part of grammar v1. |
+| 470 | Overload candidate set | Done | Public API selects one exact-type candidate using positional/named argument rules and reports no-match/ambiguity; semantic analyzer and parser integration remain future work. |
 | 471 | Name binding | Done | Every supported v1 variable, function, record, field, and type reference is resolved to an identity; unknown and duplicate references/declarations have stable diagnostics. Ambiguous/inaccessible references cannot occur without the v1-excluded imports/overloads and are tracked under 468–470. |
 | 472 | Type checker | Done | [SEMANTICS_V1.md](./SEMANTICS_V1.md) defines the supported v1 typing rules; semantic and HIR tests cover declarations, expressions, operators, calls, conversions, collections, records, tensors, and stable negative diagnostics. |
 | 473 | Constraint solver | Not started | If generics/constraints are in v1, implement constraint collection/solving and inconsistent/unsatisfied-constraint tests. |
@@ -89,8 +89,8 @@ Implement these in dependency order. A work package is accepted only when its sp
 
 ### C. Finish resolution and semantics
 
-- Implement namespaces, visibility, modules/imports, and stable identities across all symbol kinds.
-- Implement the accepted overload/generic/type-constraint rules or record a scope decision that defers them.
+- Implement namespaces, visibility, and stable identities across all syntax accepted by v1. Module/import and overload resolver APIs are available; connect them if multi-file syntax is adopted.
+- Implement the accepted generic/type-constraint rules or record a scope decision that defers them. The overload candidate-selection API exists; language integration is future work.
 - Complete constant evaluation, conversions, control-flow/return, ownership/effect, and tensor static checks that remain in v1.
 - Keep error codes stable and verify diagnostics at exact source spans.
 
@@ -102,7 +102,7 @@ Implement these in dependency order. A work package is accepted only when its sp
 
 ### E. Finish tooling and release acceptance
 
-- Complete JSON diagnostic schema, fix-it behavior, and incremental parse support if retained in v1 scope; the HIR symbol/reference index API is implemented.
+- Complete JSON diagnostic schema, fix-it behavior, and incremental parse support if retained in v1 scope; symbol/reference and module/import/overload resolver APIs are implemented.
 - Add a requirement-linked conformance suite for every v1 grammar/type/diagnostic rule.
 - Add coverage-guided lexer/parser fuzzing, sanitizer jobs, clean offline builds, CI, and installed-package consumer checks.
 - Ensure all examples and docs match behavior; run all tests from a fresh Release build.

@@ -14,7 +14,7 @@ This repository is a real, buildable, tested compiler-front-end prototype, but i
 
 **Overall front-end completion: 97%**
 
-The percentage measures progress toward the agreed front-end-only boundary in the [detailed status report](./FRONT_END_STATUS_REPORT.md) and [PDF](../Compiler_Front_End_Status_Report.pdf), not progress toward LLVM itself or the full compiler. It is a weighted estimate: each area's weight is fixed, and completion credit requires implemented, tested, documented acceptance behavior. The catalogue audit now records **32/40 done, 0 partial, and 8 not started**. AST ownership measurement (ID 460) and the HIR symbol/reference index API (ID 483) are accepted. The weighted estimate is **97.15%, rounded to 97%**; modules/imports, overloads, incremental parsing, production readiness, and full conformance remain unfinished.
+The percentage measures progress toward the agreed front-end-only boundary in the [detailed status report](./FRONT_END_STATUS_REPORT.md) and [PDF](../Compiler_Front_End_Status_Report.pdf), not progress toward LLVM itself or the full compiler. It is a weighted estimate: each area's weight is fixed, and completion credit requires implemented, tested, documented acceptance behavior. The catalogue audit now records **35/40 done, 0 partial, and 5 not started**. AST ownership measurement (ID 460), the HIR symbol/reference index API (ID 483), and module/import/overload resolution APIs (IDs 468–470) are accepted. The weighted estimate is **97.25%, rounded to 97%**; grammar/analyzer integration for multi-file modules and overload calls, generics, incremental parsing, production readiness, and full conformance remain unfinished.
 
 | Acceptance area | Weight | Area completion | Evidence / remaining work |
 | --- | --- | --- |
@@ -22,13 +22,13 @@ The percentage measures progress toward the agreed front-end-only boundary in th
 | Source manager and diagnostics | 10% | 97% | Source manager owns immutable-by-interface buffers, stable file IDs, indexed CR/LF/CRLF line tables, byte-to-line/scalar-column mapping, source spans, tab-aware carets, secondary notes, JSON escaping, and validated fix-it edits; terminal display-width handling remains. |
 | Lexer | 15% | 92% | ASCII identifiers, typed keyword and literal payloads, exact-source trivia, UTF-8 source validation, strings/escapes, binary/octal/hex integers, digit separators, nested block comments with newline preservation, and scalar/tab-aware source columns; Unicode identifiers, suffix policy, and complete numeric grammar remain. |
 | Parser and AST | 15% | 99% | Grammar v1.0.0 specifies the accepted syntax; deterministic AST golden output, an exhaustive typed visitor, explicit ownership/lifetime rules, and declaration/statement/expression recovery are tested; broader grammar and conformance testing remain. |
-| Name resolution | 10% | 95% | Separate v1 namespaces, nested scopes/shadowing, stable identities for supported declarations/references, and independent HIR binding checks; modules/imports/overloads are excluded by v1 and remain future work. |
+| Name resolution | 10% | 96% | Separate v1 namespaces, nested scopes/shadowing, stable identities, and tested module/import and exact-signature overload resolution APIs; grammar/analyzer integration remains. |
 | Type checking and semantic validation | 15% | 99% | Documented v1 rules cover declarations, expressions/operators/calls/conversions, records, collections, tensor shapes, constant evaluation, and conservative control-flow/return validation; ownership/effects and tensor operations remain outside v1. |
 | Typed HIR and verification | 15% | 99% | Project-owned typed HIR carries stable local/function/type/field identities and schema-versioned JSON; verifier rechecks lexical visibility, identity uniqueness/references, immutability, return paths, and expression/call/loop contracts. Deserialization and compatibility policy remain. |
 | CLI and diagnostics tooling | 5% | 99% | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts/carets aligned across tabs and UTF-8 scalar columns, schema-v1 JSON diagnostics, and HIR symbol/reference index; terminal-specific display widths and editor-protocol integration remain. |
-| Tests, docs, and integration | 10% | 99% | Twenty-one CTest cases cover source mapping, lexer/trivia, grammar/operators, AST golden output and exhaustive visitor coverage, AST lifetime/scalability, symbol index definitions/references/scopes/rebuild invalidation, semantic checks, HIR identities, diagnostics, CLI, malformed-input smoke testing, and installed-package consumption; full conformance, fuzzing, sanitizers, and CI remain. |
+| Tests, docs, and integration | 10% | 99% | Twenty-two CTest cases cover source mapping, lexer/trivia, grammar/operators, AST golden output and exhaustive visitor coverage, AST lifetime/scalability, symbol index, module/import/overload resolution, semantic checks, HIR identities, diagnostics, CLI, malformed-input smoke testing, and installed-package consumption; full conformance, fuzzing, sanitizers, and CI remain. |
 
-Updated weighted estimate: 4.75 + 9.7 + 13.8 + 14.85 + 9.5 + 14.85 + 14.85 + 4.95 + 9.9 = **97.15%, rounded to 97%**. This is a judgment-based estimate for the implemented v1 front-end boundary, not a claim that 97% of a complete language specification or all possible compiler work is done.
+Updated weighted estimate: 4.75 + 9.7 + 13.8 + 14.85 + 9.6 + 14.85 + 14.85 + 4.95 + 9.9 = **97.25%, rounded to 97%**. This is a judgment-based estimate for the implemented front-end boundary, including the resolver library APIs; it is not a claim that 97% of a complete language specification or all possible compiler work is done.
 
 ## Work completed
 
@@ -86,6 +86,7 @@ Updated weighted estimate: 4.75 + 9.7 + 13.8 + 14.85 + 9.5 + 14.85 + 14.85 + 4.9
 - Added semantic errors for unreachable statements, invalid `Void` values, duplicate declarations with previous-location notes, and invalid `say(Void)` calls; HIR independently rejects the latter.
 - Added a 10,000-statement AST scalability test and measured parse/destruction behavior; documented retaining `unique_ptr` ownership rather than adding an arena.
 - Added a typed-HIR symbol index for definitions, name/call/member references, lexical scope lookup, and full-snapshot invalidation keyed by source revision.
+- Added public resolver APIs for dotted module paths, manifest imports with aliases/public exports/cycle detection, and exact-type overload candidate selection; parser/analyzer integration remains outside grammar v1.
 
 ## Current limitations
 
@@ -93,7 +94,7 @@ Updated weighted estimate: 4.75 + 9.7 + 13.8 + 14.85 + 9.5 + 14.85 + 14.85 + 4.9
 - Identifiers are ASCII-only. UTF-8 source sequences are validated, but Unicode identifier rules and full Unicode display-column mapping are not implemented.
 - Numeric suffixes, raw strings, and the complete string escape repertoire remain incomplete.
 - Semantic checking follows the documented single-file v1 rules; conversions require explicit checked mode and tensor compatibility is exact shape/type equality. Ownership/effects, tensor operations/broadcasting/device checks, and numeric widening are outside v1.
-- Modules/imports, overloads, and generic declarations are not in grammar v1; module/import resolvers and overload selection remain unstarted. Range runtime behavior is undefined because this front end does not execute programs.
+- Module/import and overload resolver APIs exist, but their syntax and semantic integration are not in grammar v1. Generic declarations are also excluded. Range runtime behavior is undefined because this front end does not execute programs.
 - Typed HIR/verifier cover the supported v1 subset and verify stable identities; the symbol index is a single-file HIR snapshot API, not an LSP integration or incremental index. Deserialization, broader compatibility guarantees, incremental parsing, and full language conformance remain before an LLVM adapter is ready.
 
 ## Milestones
@@ -110,7 +111,7 @@ LLVM/backend work begins only after these front-end milestones are complete and 
 ## Latest verification
 
 - The out-of-tree build in `/tmp/indicode-review-build` succeeds with GCC 13.3.
-- All 21 CTest cases pass, including lexer payload/trivia contracts, versioned grammar and operator coverage, AST visitor/lifetime/scalability checks, symbol index definitions/references/scopes/invalidation, parser recovery/fix-its, semantic checks, HIR identity verification, diagnostic JSON golden output, CLI checks, and the installed-package consumer.
+- All 22 CTest cases pass, including lexer payload/trivia contracts, versioned grammar and operator coverage, AST visitor/lifetime/scalability checks, symbol index definitions/references/scopes/invalidation, module/import/overload resolution, parser recovery/fix-its, semantic checks, HIR identity verification, diagnostic JSON golden output, CLI checks, and the installed-package consumer.
 - The suite also verifies nested `else if` return coverage, malformed HIR return-path rejection, invalid HIR parameter/call/return/symbol-scope invariants, UTF-8/tab diagnostic caret alignment, and float literal overflow/underflow rejection.
 - Lexer regression tests confirm that UTF-8 byte offsets and human-facing source columns remain distinct and consistent after tabs and non-ASCII string contents.
 - The verification build was kept outside the project; no generated build files were added to the repository.

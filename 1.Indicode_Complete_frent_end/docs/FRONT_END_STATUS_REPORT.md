@@ -15,15 +15,15 @@ valid input to a typed HIR that is independently verified.
 
 | Measure | Current status |
 |---|---:|
-| Weighted front-end completion estimate | **97.15% (rounded to 97%)** |
-| Front-end catalogue items done to current v1 scope | **32 / 40** |
+| Weighted front-end completion estimate | **97.25% (rounded to 97%)** |
+| Front-end catalogue items done to current v1 scope | **35 / 40** |
 | Partially implemented catalogue items | **0 / 40** |
-| Not started catalogue items | **8 / 40** |
-| Current CTest suite | **21 / 21 passed** |
+| Not started catalogue items | **5 / 40** |
+| Current CTest suite | **22 / 22 passed** |
 
-The 97.15% figure is a judgment-based, weighted estimate of the front-end
+The 97.25% figure is a judgment-based, weighted estimate of the front-end
 acceptance areas below. It is not the percentage of the 40-item catalogue:
-32/40 items equals 80% by count, while the weighted estimate gives much more
+35/40 items equals 87.5% by count, while the weighted estimate gives much more
 credit to mature build, lexer, parser, and semantic areas. Neither figure
 means that the entire language, LLVM compiler, runtime, or original 777-item
 project catalogue is complete.
@@ -35,17 +35,15 @@ end that can produce verified typed HIR. Grammar and semantics v1 are
 specified in [LANGUAGE_SPEC_V1.md](./LANGUAGE_SPEC_V1.md) and
 [SEMANTICS_V1.md](./SEMANTICS_V1.md).
 
-modules/imports, overloads, generic declarations and their constraint/
-substitution engines, ownership/borrowing, effect checking, and incremental
-parsing are not implemented. The source-aware symbol/reference index is now
-available as an HIR snapshot API; editor-protocol integration remains. Several are explicitly outside
-Modules/imports, overloads, generic declarations and their constraint/
-substitution engines, ownership/borrowing, effect checking, and incremental
-parsing are not implemented. The source-aware symbol/reference index is now
-available as an HIR snapshot API; editor-protocol integration remains. Several
-features are explicitly outside the current v1 syntax/semantic contract; they remain visible in the catalogue
-the current v1 syntax/semantic contract; they remain visible in the catalogue
-as future work rather than being claimed as completed. There is no LLVM
+The v1 parser remains single-file and does not accept module/import or overload
+syntax. Public resolution APIs provide dotted module path lookup,
+manifest-based imports, alias/visibility/cycle checks, and exact-signature
+overload selection; they are not yet wired into parsing, semantic analysis, or
+the CLI. Generic declarations and their constraint/substitution engines,
+ownership/borrowing, effect checking, and incremental parsing are not
+implemented. The source-aware symbol/reference index is available as an HIR
+snapshot API; editor-protocol integration remains. These boundaries remain
+visible rather than being claimed as language-level support. There is no LLVM
 adapter, machine-code generation, executable runtime, tensor execution, or
 device backend. The project is not production-ready: full conformance,
 coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
@@ -59,14 +57,14 @@ policy remain.
 | Source manager and diagnostics | 10% | 97% | 9.70 | Owned source buffers, indexed line tables, byte/scalar columns, tab-aware diagnostics, notes, fix-its and JSON schema v1; terminal display-width and editor integration remain. |
 | Lexer | 15% | 92% | 13.80 | Typed token payloads, trivia, UTF-8 validation, strings, radix integers, separators and nested comments; Unicode identifiers, suffix policy and complete numeric grammar remain. |
 | Parser and AST | 15% | 99% | 14.85 | Grammar v1, precedence, recovery, golden printer, exhaustive visitor and ownership/lifetime contract; broader conformance remains. |
-| Name resolution | 10% | 95% | 9.50 | v1 scopes/namespaces, shadowing, stable identities and HIR binding checks; modules/imports/overloads remain future work. |
+| Name resolution | 10% | 96% | 9.60 | v1 scopes/namespaces and stable identities, plus tested module/import and exact-signature overload resolution APIs; grammar/analyzer integration remains. |
 | Type checking and semantic validation | 15% | 99% | 14.85 | v1 declarations, expressions, calls, conversions, records, collections, tensor shapes, constants and conservative flow/return checking; ownership/effects and tensor operations remain outside v1. |
 | Typed HIR and verification | 15% | 99% | 14.85 | AST lowering, stable symbols, schema-v1 JSON and independent checks of types, scopes, identities, calls, mutability and return paths; deserialization and broader compatibility guarantees remain. |
 | CLI and diagnostics tooling | 5% | 99% | 4.95 | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts, schema-v1 diagnostics, and HIR symbol/reference index; editor-protocol integration and terminal display-width support remain. |
-| Tests, docs and integration | 10% | 99% | 9.90 | 21 passing tests including AST scalability, symbol index, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
-| **Total** | **100%** |  | **97.15%** | **Rounded display: 97%.** |
+| Tests, docs and integration | 10% | 99% | 9.90 | 22 passing tests including AST scalability, symbol index, module/import/overload resolution, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
+| **Total** | **100%** |  | **97.25%** | **Rounded display: 97%.** |
 
-Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.50 + 14.85 + 14.85 + 4.95 + 9.90 = 97.15`.
+Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 = 97.25`.
 
 ## What is implemented
 
@@ -132,6 +130,11 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.50 + 14.85 + 14.85 + 4.95 + 9.90 =
 - CMake install/export package and a separately built package-consumer test.
 - HIR-backed symbol/reference indexing with lexical scope lookup and full-snapshot
   invalidation by source revision; this is a library API, not an LSP server.
+- Public module/import resolver APIs with deterministic path lookup, alias and
+  public-export resolution, missing/ambiguous diagnostics, and cycle rejection.
+- Exact-type overload candidate selection with named-argument matching,
+  no-match reporting, and ambiguity reporting; parser/semantic integration is
+  not part of v1 syntax.
 - A 10,000-statement AST parse/destruction acceptance test; the documented
   `unique_ptr` ownership design remains in place rather than adding an arena.
 
@@ -143,27 +146,25 @@ listed under “Not started”.
 
 | Status | IDs | Concepts |
 |---|---|---|
-| Done (32) | 445–459 | Source manager, source buffer, source span, line table, column mapping, UTF-8 validator, token kind, token payload, lexer state, trivia preservation, parser state, recursive-descent parser, Pratt parser, grammar version, AST context. |
-| Done (32) | 460–467 | AST ownership alternative measurement, AST visitor, AST printer, AST serializer, syntax recovery, error synchronization, symbol identity, scope table. |
-| Done (32) | 471–472 | Name binding, type checker. |
-| Done (32) | 475–477 | Constant evaluator, control-flow validation, definite-return analysis. |
-| Done (32) | 480–483 | Tensor shape checker, diagnostic engine, JSON diagnostics, language-server symbol/reference index API. |
-| Not started (8) | 468–470 | Module resolver, import resolver, and overload candidate selection. |
-| Not started (8) | 473–474 | Generic constraint solver and type substitution engine. |
-| Not started (8) | 478–479 | Effect checker and ownership/borrowing checker. |
-| Not started (8) | 484 | Incremental parsing. |
+| Done (35) | 445–459 | Source manager, source buffer, source span, line table, column mapping, UTF-8 validator, token kind, token payload, lexer state, trivia preservation, parser state, recursive-descent parser, Pratt parser, grammar version, AST context. |
+| Done (35) | 460–467 | AST ownership alternative measurement, AST visitor, AST printer, AST serializer, syntax recovery, error synchronization, symbol identity, scope table. |
+| Done (35) | 468–472 | Module/import resolver APIs, overload candidate selection API, name binding, type checker. |
+| Done (35) | 475–477 | Constant evaluator, control-flow validation, definite-return analysis. |
+| Done (35) | 480–483 | Tensor shape checker, diagnostic engine, JSON diagnostics, language-server symbol/reference index API. |
+| Not started (5) | 473–474 | Generic constraint solver and type substitution engine. |
+| Not started (5) | 478–479 | Effect checker and ownership/borrowing checker. |
+| Not started (5) | 484 | Incremental parsing. |
 
-There are no catalogue items currently marked “Partial”. The eight not-started
+There are no catalogue items currently marked “Partial”. The five not-started
 items are not hidden by the 97% weighted estimate.
 
 ## Remaining work to reach the next milestones
 
-1. **Modules and imports:** define module identity, search roots, import aliases,
-   visibility, missing-import/ambiguity diagnostics and cycle behavior (IDs
-   468–469). This requires a language-scope decision beyond single-file v1.
-2. **Overloads and generics:** decide whether overloads/generics enter a future
-   grammar version, then implement overload selection, constraint solving and
-   type substitution with ambiguity and failure tests (IDs 470, 473–474).
+1. **Language integration:** decide whether module/import/overload syntax enters
+  a future grammar version, then connect the resolver APIs to parsing,
+  semantic analysis, HIR identities, and CLI workflows (IDs 468–470).
+2. **Generics:** decide whether generics enter a future grammar version, then
+  implement constraint solving and type substitution (IDs 473–474).
 3. **Effects and ownership:** specify effect and ownership/borrowing models
    before implementing their checkers; these cannot be safely inferred from the
    current v1 rules (IDs 478–479).
@@ -179,11 +180,11 @@ items are not hidden by the 97% weighted estimate.
 
 - CMake build succeeds in the out-of-tree directory
   `/tmp/indicode-partial-build`.
-- Full CTest suite passes: **21/21**.
+- Full CTest suite passes: **22/22**.
 - Covered tests include lexer/parser/AST/visitor/semantics/HIR/diagnostics,
   AST large-input destruction, symbol definitions/references/scopes/rebuild
-  invalidation, CLI JSON, malformed-input robustness, and installed-package
-  consumption.
+  invalidation, module/import/overload resolver APIs, CLI JSON,
+  malformed-input robustness, and installed-package consumption.
 - `git diff --check` passes for the report update.
 
 ## Related specifications

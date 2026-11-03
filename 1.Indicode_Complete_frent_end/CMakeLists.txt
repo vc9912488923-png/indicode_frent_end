@@ -18,6 +18,7 @@ add_library(indicode_frontend
     src/ast_visitor.cpp
     src/hir.cpp
     src/symbol_index.cpp
+    src/resolution.cpp
     src/diagnostic.cpp
     src/const_eval.cpp
 )
@@ -99,6 +100,10 @@ if(BUILD_TESTING)
     add_executable(indicode_symbol_index_tests tests/symbol_index_tests.cpp)
     target_link_libraries(indicode_symbol_index_tests PRIVATE indicode_frontend)
     add_test(NAME symbol_index_tests COMMAND indicode_symbol_index_tests)
+
+    add_executable(indicode_resolution_tests tests/resolution_tests.cpp)
+    target_link_libraries(indicode_resolution_tests PRIVATE indicode_frontend)
+    add_test(NAME resolution_tests COMMAND indicode_resolution_tests)
 
     add_executable(indicode_diagnostic_tests tests/diagnostic_tests.cpp)
     target_link_libraries(indicode_diagnostic_tests PRIVATE indicode_frontend)
