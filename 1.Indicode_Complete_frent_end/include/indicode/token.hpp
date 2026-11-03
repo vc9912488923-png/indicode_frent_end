@@ -61,7 +61,10 @@ enum class Keyword {
     Let,
     Var,
     True,
-    False
+    False,
+    Move,
+    Borrow,
+    BorrowMut
 };
 
 struct KeywordPayload {

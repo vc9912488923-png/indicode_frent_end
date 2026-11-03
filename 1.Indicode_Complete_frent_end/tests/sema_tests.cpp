@@ -76,6 +76,96 @@ int main() {
                     valid_program.statements[15]->declared_type == "Text",
                     "string literals should infer Char/Text by Unicode scalar count");
 
+    const indicode::SourceFile generic_source{
+        "generic.indi",
+        "function identity<T>(value: T) -> T { return value }\n"
+        "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+        "function first<T>(items: List<T>) -> T { return items[0] }\n"
+        "one = identity(1)\n"
+        "sum = add(2, 3)\n"
+        "head = first([4, 5])\n"
+    };
+    auto generic_program = parse_source(generic_source);
+    const auto generic_result = indicode::Analyzer().analyze(generic_program);
+    require(generic_result.diagnostics.empty() &&
+                generic_program.statements[0]->declared_type == "Int" &&
+                generic_program.statements[1]->declared_type == "Int" &&
+                generic_program.statements[2]->declared_type == "Int",
+            "generic calls should infer nested type variables and substitute return types");
+
+    const indicode::SourceFile invalid_generic_source{
+        "invalid_generic.indi",
+        "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+        "bad = add(\"x\", \"y\")\n"
+    };
+    auto invalid_generic_program = parse_source(invalid_generic_source);
+    const auto invalid_generic_result = indicode::Analyzer().analyze(invalid_generic_program);
+    require(std::any_of(invalid_generic_result.diagnostics.begin(),
+                        invalid_generic_result.diagnostics.end(),
+                        [](const auto& diagnostic) { return diagnostic.code == "E-SEMA-056"; }),
+            "generic calls should reject type arguments that violate their constraints");
+
+    const indicode::SourceFile effects_source{
+        "effects.indi",
+        "function inner() { say(\"hello\") }\n"
+        "function outer() effects(io) { inner() }\n"
+        "function allocate() effects(allocation) { let items = [1] }\n"
+        "function mutate() effects(mutation) { var value = 0; value = 1 }\n"
+    };
+    auto effects_program = parse_source(effects_source);
+    const auto effects_result = indicode::Analyzer().analyze(effects_program);
+    require(effects_result.diagnostics.empty() &&
+                effects_program.functions[1].inferred_effects == std::vector<std::string>{"io"} &&
+                effects_program.functions[2].inferred_effects == std::vector<std::string>{"allocation"} &&
+                effects_program.functions[3].inferred_effects == std::vector<std::string>{"mutation"},
+            "effects should infer direct and transitive IO, allocation, and mutation");
+
+    const indicode::SourceFile invalid_effects_source{
+        "invalid_effects.indi",
+        "function undeclared() effects() { say(\"no\") }\n"
+        "function unknown() effects(network) {}\n"
+    };
+    auto invalid_effects_program = parse_source(invalid_effects_source);
+    const auto invalid_effects = indicode::Analyzer().analyze(invalid_effects_program);
+    require(std::any_of(invalid_effects.diagnostics.begin(), invalid_effects.diagnostics.end(),
+                        [](const auto& diagnostic) { return diagnostic.code == "E-EFFECT-003"; }) &&
+                std::any_of(invalid_effects.diagnostics.begin(), invalid_effects.diagnostics.end(),
+                            [](const auto& diagnostic) { return diagnostic.code == "E-EFFECT-001"; }),
+            "effect annotations should reject missing and unsupported effects");
+
+    const indicode::SourceFile ownership_source{
+        "ownership.indi",
+        "function consume(value: move List<Int>) {}\n"
+        "function observe(value: borrow List<Int>) {}\n"
+        "function update(value: borrow_mut List<Int>) { value = [2] }\n"
+        "function run() { var items = [1]; observe(borrow items); "
+        "update(borrow_mut items); consume(move items) }\n"
+    };
+    auto ownership_program = parse_source(ownership_source);
+    require(indicode::Analyzer().analyze(ownership_program).diagnostics.empty(),
+            "matching move and call-scoped borrow modes should pass ownership checks");
+
+    const indicode::SourceFile invalid_ownership_source{
+        "invalid_ownership.indi",
+        "function take(value: move List<Int>) {}\n"
+        "function both(read: borrow List<Int>, write: borrow_mut List<Int>) {}\n"
+        "function mismatch(value: List<Int>) { take(value) }\n"
+        "function use_after_move() { var items = [1]; take(move items); "
+        "say(items[0]) }\n"
+        "function conflicting_borrows() { var items = [1]; "
+        "both(borrow items, borrow_mut items) }\n"
+        "function immutable_borrow() { let items = [1]; "
+        "both(borrow items, borrow_mut items) }\n"
+    };
+    auto invalid_ownership_program = parse_source(invalid_ownership_source);
+    const auto invalid_ownership = indicode::Analyzer().analyze(invalid_ownership_program);
+    for (const auto* code : {"E-OWN-002", "E-OWN-003", "E-OWN-004", "E-OWN-005"}) {
+        require(std::any_of(invalid_ownership.diagnostics.begin(),
+                            invalid_ownership.diagnostics.end(),
+                            [code](const auto& diagnostic) { return diagnostic.code == code; }),
+                "ownership checker should diagnose mode mismatch, moved use, and borrow conflicts");
+    }
+
     const indicode::SourceFile invalid{
         "invalid.indi",
         "function add(a: Int, b: Int) -> Int { return a + b }\n"

@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cstdint>
 #include <functional>
+#include <set>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
@@ -161,20 +162,70 @@ bool always_returns(const std::vector<std::unique_ptr<HirStmt>>& statements) {
     return false;
 }
 
-bool is_known_type(const std::string& type, const std::unordered_set<std::string>& record_names) {
+bool is_known_type(const std::string& type, const std::unordered_set<std::string>& record_names,
+                   const std::unordered_map<std::string, std::string>& generic_constraints = {}) {
+    if (generic_constraints.contains(type)) return true;
     if (type.starts_with("Tensor<")) return valid_tensor_type(type);
     if (const auto range_type = range_element_type(type); !range_type.empty()) return true;
     constexpr std::string_view list_prefix = "List<";
     if (type.compare(0, list_prefix.size(), list_prefix) == 0 &&
         type.size() > list_prefix.size() && type.back() == '>') {
         const auto element_type = type.substr(list_prefix.size(), type.size() - list_prefix.size() - 1);
-        return is_known_type(element_type, record_names) && element_type != "Void";
+        return is_known_type(element_type, record_names, generic_constraints) && element_type != "Void";
     }
     static const std::unordered_set<std::string> types{
         "Bool", "Byte", "U8", "Int2", "UInt2", "Int", "UInt", "Long", "ULong",
         "Half", "Float", "Double", "Char", "Text", "Void"
     };
     return types.find(type) != types.end() || record_names.contains(type);
+}
+
+bool unify_hir_type_pattern(const std::string& pattern, const std::string& actual,
+                            const std::unordered_map<std::string, std::string>& constraints,
+                            std::unordered_map<std::string, std::string>& substitutions) {
+    if (constraints.contains(pattern)) {
+        const auto [found, inserted] = substitutions.emplace(pattern, actual);
+        return inserted || found->second == actual;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        if (pattern.starts_with(constructor) && pattern.back() == '>' &&
+            actual.starts_with(constructor) && actual.back() == '>') {
+            return unify_hir_type_pattern(
+                pattern.substr(constructor.size(), pattern.size() - constructor.size() - 1),
+                actual.substr(constructor.size(), actual.size() - constructor.size() - 1),
+                constraints, substitutions);
+        }
+    }
+    return pattern == actual;
+}
+
+std::string substitute_hir_type(
+    const std::string& type, const std::unordered_map<std::string, std::string>& substitutions) {
+    if (const auto found = substitutions.find(type); found != substitutions.end()) {
+        return found->second;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        if (type.starts_with(constructor) && type.back() == '>') {
+            return constructor + substitute_hir_type(
+                                    type.substr(constructor.size(),
+                                                type.size() - constructor.size() - 1),
+                                    substitutions) + ">";
+        }
+    }
+    return type;
+}
+
+bool satisfies_hir_constraint(const std::string& constraint, const std::string& type) {
+    return (constraint == "Numeric" && is_numeric_type(type)) ||
+           (constraint == "Integer" && is_integer_type(type));
+}
+
+OwnershipMode ownership_mode_of(const HirExpr& expression) {
+    if (expression.kind != HirExprKind::Unary) return OwnershipMode::Value;
+    if (expression.value == "move") return OwnershipMode::Move;
+    if (expression.value == "borrow") return OwnershipMode::Borrow;
+    if (expression.value == "borrow_mut") return OwnershipMode::BorrowMut;
+    return OwnershipMode::Value;
 }
 
 std::string list_element_type(const std::string& type) {
@@ -208,13 +259,17 @@ HirProgram lower_to_hir(const Program& program) {
         HirFunction lowered;
         lowered.name = function.name;
         lowered.symbol_id = function.symbol_id;
+        lowered.generic_parameters = function.generic_parameters;
+        lowered.has_effect_annotation = function.has_effect_annotation;
+        lowered.declared_effects = function.declared_effects;
+        lowered.inferred_effects = function.inferred_effects;
         lowered.return_type = function.return_type.empty() ? "Void" : function.return_type;
         lowered.return_type_symbol_id = function.return_type_symbol_id;
         lowered.span = function.span;
         for (const auto& parameter : function.parameters) {
             lowered.parameters.push_back(
                 {parameter.name, parameter.type, parameter.span, parameter.resolved_symbol_id,
-                 parameter.resolved_type_symbol_id});
+                 parameter.resolved_type_symbol_id, parameter.ownership_mode});
         }
         lower_statements(function.body, lowered.body);
         result.functions.push_back(std::move(lowered));
@@ -275,7 +330,20 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
             diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-038",
                                    "function must have a unique stable symbol identity", function.span});
         }
-        if (!is_known_type(function.return_type, record_names)) {
+        std::unordered_map<std::string, std::string> generic_constraints;
+        for (const auto& parameter : function.generic_parameters) {
+            if (!generic_constraints.emplace(parameter.name, parameter.constraint).second) {
+                diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-047",
+                                       "generic type parameter is duplicated", parameter.span});
+            }
+            if (!parameter.constraint.empty() && parameter.constraint != "Numeric" &&
+                parameter.constraint != "Integer") {
+                diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-048",
+                                       "generic type parameter has an unknown constraint",
+                                       parameter.span});
+            }
+        }
+        if (!is_known_type(function.return_type, record_names, generic_constraints)) {
             diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-002",
                                    "function has an unknown return type", function.span});
         }
@@ -287,7 +355,8 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                                    function.span});
         }
         for (const auto& parameter : function.parameters) {
-            if (!is_known_type(parameter.type, record_names) || parameter.type == "Void") {
+            if (!is_known_type(parameter.type, record_names, generic_constraints) ||
+                parameter.type == "Void") {
                 diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-003",
                                        "parameter has an invalid type", parameter.span});
             }
@@ -327,6 +396,9 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
     };
     std::vector<std::unordered_map<std::string, HirBinding>> binding_scopes(1);
     std::unordered_set<std::uint64_t> declared_symbol_ids = declaration_symbol_ids;
+    std::unordered_map<std::string, std::string> active_generic_constraints;
+    std::unordered_set<std::uint64_t> moved_symbol_ids;
+    bool borrow_expression_allowed = false;
     auto declare_hir_binding = [&](const std::string& name, HirBinding binding,
                                    SourceSpan span, const char* duplicate_code) {
         if (name.empty() || binding.symbol_id == 0 ||
@@ -348,7 +420,7 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
 
     std::function<std::string(const HirExpr&)> verify_expression;
     verify_expression = [&](const HirExpr& expression) -> std::string {
-        if (!is_known_type(expression.type, record_names)) {
+        if (!is_known_type(expression.type, record_names, active_generic_constraints)) {
             diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-004",
                                    "expression is missing a valid type annotation", expression.span});
             return "<error>";
@@ -381,6 +453,9 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                 diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-033",
                                        "name expression identity or type does not match its resolved binding",
                                        expression.span});
+            } else if (moved_symbol_ids.contains(expression.symbol_id)) {
+                diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-050",
+                                       "name expression uses a value after it was moved", expression.span});
             }
             break;
         }
@@ -392,10 +467,44 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
             break;
         case HirExprKind::Unary: {
             const auto operand_type = child_type(expression.left);
-            const bool valid = (expression.value == "!" && operand_type == "Bool" && expression.type == "Bool") ||
+            const auto ownership_mode = ownership_mode_of(expression);
+            if (ownership_mode != OwnershipMode::Value) {
+                const bool valid_operand = expression.left &&
+                    expression.left->kind == HirExprKind::Name &&
+                    expression.left->symbol_id != 0;
+                if (!valid_operand) {
+                    diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-049",
+                                           "ownership operation requires a resolved variable",
+                                           expression.span});
+                } else if (ownership_mode != OwnershipMode::Move &&
+                           !borrow_expression_allowed) {
+                    diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-051",
+                                           "borrow expression is not a call argument", expression.span});
+                } else if (ownership_mode == OwnershipMode::BorrowMut) {
+                    const auto* binding = find_binding(expression.left->symbol);
+                    if (binding == nullptr || !binding->mutable_binding) {
+                        diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-054",
+                                               "mutable borrow targets an immutable binding",
+                                               expression.left->span});
+                    }
+                }
+                if (valid_operand && ownership_mode == OwnershipMode::Move) {
+                    moved_symbol_ids.insert(expression.left->symbol_id);
+                }
+            }
+            const auto constraint = active_generic_constraints.find(operand_type);
+            const bool generic_numeric = constraint != active_generic_constraints.end() &&
+                (constraint->second == "Numeric" || constraint->second == "Integer");
+            const bool generic_integer = constraint != active_generic_constraints.end() &&
+                constraint->second == "Integer";
+            const bool valid = (ownership_mode != OwnershipMode::Value &&
+                                operand_type == expression.type) ||
+                               (expression.value == "!" && operand_type == "Bool" && expression.type == "Bool") ||
                                ((expression.value == "+" || expression.value == "-") &&
-                                is_numeric_type(operand_type) && expression.type == operand_type) ||
-                               (expression.value == "~" && is_integer_type(operand_type) &&
+                                (is_numeric_type(operand_type) || generic_numeric) &&
+                                expression.type == operand_type) ||
+                               (expression.value == "~" &&
+                                (is_integer_type(operand_type) || generic_integer) &&
                                 expression.type == operand_type);
             if (!valid && operand_type != "<error>") {
                 diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-008",
@@ -448,8 +557,12 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
             const bool equality = expression.value == "==" || expression.value == "!=";
             const bool ordering = expression.value == "<" || expression.value == "<=" ||
                                   expression.value == ">" || expression.value == ">=";
+                        const auto constraint = active_generic_constraints.find(left_type);
+                        const bool generic_numeric = constraint != active_generic_constraints.end() &&
+                                (constraint->second == "Numeric" || constraint->second == "Integer");
             const bool valid = arithmetic
-                ? left_type == right_type && is_numeric_type(left_type) && expression.type == left_type
+                                ? left_type == right_type &&
+                                    (is_numeric_type(left_type) || generic_numeric) && expression.type == left_type
                 : logical
                     ? left_type == "Bool" && right_type == "Bool" && expression.type == "Bool"
                     : equality
@@ -476,7 +589,10 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
             }
             std::vector<std::string> argument_types;
             for (const auto& argument : expression.arguments) {
+                const bool previous_borrow_allowed = borrow_expression_allowed;
+                borrow_expression_allowed = true;
                 argument_types.push_back(verify_expression(*argument));
+                borrow_expression_allowed = previous_borrow_allowed;
             }
             if (expression.symbol == "say") {
                 const bool has_named_argument = !expression.argument_names.empty() &&
@@ -557,9 +673,14 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                                        expression.span});
             }
             const auto& parameters = target->second->parameters;
-            bool matches = parameters.size() == argument_types.size() &&
-                           expression.type == target->second->return_type;
+            bool matches = parameters.size() == argument_types.size();
+            std::unordered_map<std::string, std::string> target_constraints;
+            std::unordered_map<std::string, std::string> substitutions;
+            for (const auto& generic_parameter : target->second->generic_parameters) {
+                target_constraints.emplace(generic_parameter.name, generic_parameter.constraint);
+            }
             std::vector<bool> assigned(parameters.size(), false);
+            std::unordered_map<std::uint64_t, OwnershipMode> call_ownership_modes;
             std::size_t next_positional = 0;
             for (std::size_t index = 0; matches && index < argument_types.size(); ++index) {
                 std::size_t parameter_index = parameters.size();
@@ -578,15 +699,49 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                     }
                 }
                 if (parameter_index >= parameters.size() || assigned[parameter_index] ||
-                    argument_types[index] != parameters[parameter_index].type) {
+                    !unify_hir_type_pattern(parameters[parameter_index].type,
+                                            argument_types[index], target_constraints,
+                                            substitutions)) {
                     matches = false;
                 } else {
                     assigned[parameter_index] = true;
+                    const auto actual_mode = ownership_mode_of(*expression.arguments[index]);
+                    if (actual_mode != parameters[parameter_index].ownership_mode) {
+                        diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-052",
+                                               "call argument ownership mode does not match its parameter",
+                                               expression.arguments[index]->span});
+                        matches = false;
+                    }
+                    const auto& argument = *expression.arguments[index];
+                    if (actual_mode != OwnershipMode::Value && argument.left &&
+                        argument.left->kind == HirExprKind::Name) {
+                        const auto symbol_id = argument.left->symbol_id;
+                        if (const auto previous = call_ownership_modes.find(symbol_id);
+                            previous != call_ownership_modes.end() &&
+                            (actual_mode != OwnershipMode::Borrow ||
+                             previous->second != OwnershipMode::Borrow)) {
+                            diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-053",
+                                                   "call has conflicting borrows or a move",
+                                                   argument.span});
+                            matches = false;
+                        }
+                        call_ownership_modes.emplace(symbol_id, actual_mode);
+                    }
                 }
             }
             for (const bool parameter_assigned : assigned) {
                 matches = matches && parameter_assigned;
             }
+            for (const auto& generic_parameter : target->second->generic_parameters) {
+                const auto inferred = substitutions.find(generic_parameter.name);
+                if (inferred == substitutions.end() ||
+                    (!generic_parameter.constraint.empty() &&
+                     !satisfies_hir_constraint(generic_parameter.constraint, inferred->second))) {
+                    matches = false;
+                }
+            }
+            matches = matches && expression.type ==
+                substitute_hir_type(target->second->return_type, substitutions);
             if (!matches) {
                 diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-012",
                                        "call signature does not match its typed HIR target", expression.span});
@@ -653,7 +808,8 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
             }
             switch (statement->kind) {
             case HirStmtKind::Variable: {
-                if (!is_known_type(statement->type, record_names) || value_type != statement->type) {
+                if (!is_known_type(statement->type, record_names, active_generic_constraints) ||
+                    value_type != statement->type) {
                     diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-014",
                                            "variable initializer does not match its declared HIR type", statement->span});
                 }
@@ -666,7 +822,7 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                 const auto* binding = find_binding(statement->name);
                 if (binding == nullptr) {
                     if (statement->name.empty() || statement->symbol_id == 0 ||
-                        !is_known_type(statement->type, record_names) ||
+                        !is_known_type(statement->type, record_names, active_generic_constraints) ||
                         value_type != statement->type) {
                         diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-015",
                                                "assignment does not match its resolved HIR binding type",
@@ -687,6 +843,7 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                     diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-015",
                                            "assignment does not match its resolved HIR binding type", statement->span});
                 }
+                moved_symbol_ids.erase(statement->symbol_id);
                 break;
             }
             case HirStmtKind::Return:
@@ -725,35 +882,61 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                 declare_hir_binding(statement->name,
                     HirBinding{statement->type, false, statement->symbol_id},
                     statement->span, "E-HIR-034");
+                const auto before_loop = moved_symbol_ids;
                 verify_statements(statement->body, return_type, in_function);
+                const auto after_loop = moved_symbol_ids;
+                moved_symbol_ids = before_loop;
+                moved_symbol_ids.insert(after_loop.begin(), after_loop.end());
                 binding_scopes.pop_back();
                 break;
             }
             }
             if (statement->kind == HirStmtKind::If) {
+                const auto before_if = moved_symbol_ids;
+                auto then_moved = before_if;
+                moved_symbol_ids = then_moved;
                 binding_scopes.emplace_back();
                 verify_statements(statement->body, return_type, in_function);
                 binding_scopes.pop_back();
+                then_moved = moved_symbol_ids;
+                auto else_moved = before_if;
                 if (!statement->else_body.empty()) {
+                    moved_symbol_ids = else_moved;
                     binding_scopes.emplace_back();
                     verify_statements(statement->else_body, return_type, in_function);
                     binding_scopes.pop_back();
+                    else_moved = moved_symbol_ids;
                 }
+                moved_symbol_ids = before_if;
+                moved_symbol_ids.insert(then_moved.begin(), then_moved.end());
+                moved_symbol_ids.insert(else_moved.begin(), else_moved.end());
             } else if (statement->kind == HirStmtKind::While ||
                        statement->kind == HirStmtKind::Repeat) {
+                const auto before_loop = moved_symbol_ids;
                 binding_scopes.emplace_back();
                 verify_statements(statement->body, return_type, in_function);
                 binding_scopes.pop_back();
+                const auto after_loop = moved_symbol_ids;
+                moved_symbol_ids = before_loop;
+                moved_symbol_ids.insert(after_loop.begin(), after_loop.end());
             }
         }
     };
 
     verify_statements(program.statements, "Void", false);
+    moved_symbol_ids.clear();
     for (const auto& function : program.functions) {
+        active_generic_constraints.clear();
+        for (const auto& parameter : function.generic_parameters) {
+            active_generic_constraints.emplace(parameter.name, parameter.constraint);
+        }
         binding_scopes.emplace_back();
+        moved_symbol_ids.clear();
         for (const auto& parameter : function.parameters) {
             declare_hir_binding(parameter.name,
-                HirBinding{parameter.type, false, parameter.symbol_id},
+                HirBinding{parameter.type,
+                           parameter.ownership_mode == OwnershipMode::BorrowMut,
+                           parameter.symbol_id},
                 parameter.span, "E-HIR-030");
         }
         verify_statements(function.body, function.return_type, true);
@@ -763,6 +946,90 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
         }
         binding_scopes.pop_back();
     }
+
+    struct HirEffectSummary {
+        std::set<std::string> direct;
+        std::set<std::string> calls;
+        std::set<std::string> inferred;
+    };
+    std::vector<HirEffectSummary> effect_summaries(program.functions.size());
+    std::unordered_map<std::string, std::size_t> function_indices;
+    for (std::size_t index = 0; index < program.functions.size(); ++index) {
+        function_indices.emplace(program.functions[index].name, index);
+    }
+    std::function<void(const HirExpr&, HirEffectSummary&)> collect_expression_effects;
+    collect_expression_effects = [&](const HirExpr& expression, HirEffectSummary& summary) {
+        if (expression.kind == HirExprKind::ListLiteral) summary.direct.insert("allocation");
+        if (expression.kind == HirExprKind::Call) {
+            if (expression.symbol == "say") summary.direct.insert("io");
+            else if (records.contains(expression.symbol)) summary.direct.insert("allocation");
+            else if (function_indices.contains(expression.symbol)) summary.calls.insert(expression.symbol);
+        }
+        if (expression.left) collect_expression_effects(*expression.left, summary);
+        if (expression.right) collect_expression_effects(*expression.right, summary);
+        for (const auto& argument : expression.arguments) {
+            collect_expression_effects(*argument, summary);
+        }
+    };
+    std::function<void(const std::vector<std::unique_ptr<HirStmt>>&, HirEffectSummary&)> collect_statement_effects;
+    collect_statement_effects = [&](const auto& statements, HirEffectSummary& summary) {
+        for (const auto& statement : statements) {
+            if (statement->kind == HirStmtKind::Assignment) summary.direct.insert("mutation");
+            if (statement->expression) collect_expression_effects(*statement->expression, summary);
+            collect_statement_effects(statement->body, summary);
+            collect_statement_effects(statement->else_body, summary);
+        }
+    };
+    for (std::size_t index = 0; index < program.functions.size(); ++index) {
+        collect_statement_effects(program.functions[index].body, effect_summaries[index]);
+        effect_summaries[index].inferred = effect_summaries[index].direct;
+    }
+    bool effects_changed = true;
+    while (effects_changed) {
+        effects_changed = false;
+        for (auto& summary : effect_summaries) {
+            for (const auto& callee : summary.calls) {
+                const auto found = function_indices.find(callee);
+                if (found != function_indices.end()) {
+                    const auto previous_size = summary.inferred.size();
+                    summary.inferred.insert(effect_summaries[found->second].inferred.begin(),
+                                            effect_summaries[found->second].inferred.end());
+                    effects_changed = effects_changed || summary.inferred.size() != previous_size;
+                }
+            }
+        }
+    }
+    const std::unordered_set<std::string> known_effects{"allocation", "io", "mutation"};
+    for (std::size_t index = 0; index < program.functions.size(); ++index) {
+        const auto& function = program.functions[index];
+        const std::set<std::string> serialized_effects(function.inferred_effects.begin(),
+                                                        function.inferred_effects.end());
+        if (serialized_effects != effect_summaries[index].inferred) {
+            diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-055",
+                                   "function effect summary does not match its body", function.span});
+        }
+        if (!function.has_effect_annotation && !function.declared_effects.empty()) {
+            diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-057",
+                                   "unannotated function contains declared effects", function.span});
+        }
+        std::unordered_set<std::string> declared;
+        for (const auto& effect : function.declared_effects) {
+            if (!known_effects.contains(effect) || !declared.insert(effect).second) {
+                diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-057",
+                                       "function effect annotation is invalid", function.span});
+            }
+        }
+        if (function.has_effect_annotation) {
+            for (const auto& effect : effect_summaries[index].inferred) {
+                if (!declared.contains(effect)) {
+                    diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-056",
+                                           "function effect summary exceeds its annotation",
+                                           function.span});
+                }
+            }
+        }
+    }
+    active_generic_constraints.clear();
     return diagnostics;
 }
 
@@ -894,13 +1161,37 @@ std::string print_hir(const HirProgram& program) {
         output << "}\n";
     }
     for (const auto& function : program.functions) {
-        output << "func @" << function.name << '#' << function.symbol_id << '(';
+        output << "func @" << function.name << '#' << function.symbol_id;
+        if (!function.generic_parameters.empty()) {
+            output << '<';
+            for (std::size_t index = 0; index < function.generic_parameters.size(); ++index) {
+                if (index != 0) output << ", ";
+                const auto& parameter = function.generic_parameters[index];
+                output << parameter.name;
+                if (!parameter.constraint.empty()) output << ": " << parameter.constraint;
+            }
+            output << '>';
+        }
+        output << '(';
         for (std::size_t index = 0; index < function.parameters.size(); ++index) {
             if (index != 0) output << ", ";
-            output << '%' << function.parameters[index].name << '#'
-                   << function.parameters[index].symbol_id << ": " << function.parameters[index].type;
+            const auto& parameter = function.parameters[index];
+            output << '%' << parameter.name << '#' << parameter.symbol_id << ": ";
+            if (parameter.ownership_mode != OwnershipMode::Value) {
+                output << ownership_mode_name(parameter.ownership_mode) << ' ';
+            }
+            output << parameter.type;
         }
-        output << ") -> " << function.return_type << '\n';
+        output << ") -> " << function.return_type;
+        if (function.has_effect_annotation) {
+            output << " effects(";
+            for (std::size_t index = 0; index < function.declared_effects.size(); ++index) {
+                if (index != 0) output << ", ";
+                output << function.declared_effects[index];
+            }
+            output << ')';
+        }
+        output << '\n';
         print_statements(function.body, 1);
     }
     print_statements(program.statements, 0);
@@ -1028,7 +1319,7 @@ std::string serialize_hir_json(const HirProgram& program) {
         output << ']';
     };
 
-    output << "{\"schemaVersion\":1,\"records\":[";
+    output << "{\"schemaVersion\":2,\"records\":[";
     for (std::size_t index = 0; index < program.records.size(); ++index) {
         if (index != 0) output << ',';
         const auto& record = program.records[index];
@@ -1054,7 +1345,32 @@ std::string serialize_hir_json(const HirProgram& program) {
         const auto& function = program.functions[index];
         output << "{\"name\":" << quote(function.name)
                << ",\"symbolId\":" << function.symbol_id
-               << ",\"returnType\":" << quote(function.return_type)
+             << ",\"genericParameters\":[";
+         for (std::size_t generic_index = 0;
+              generic_index < function.generic_parameters.size(); ++generic_index) {
+             if (generic_index != 0) output << ',';
+             const auto& generic_parameter = function.generic_parameters[generic_index];
+             output << "{\"name\":" << quote(generic_parameter.name)
+                 << ",\"constraint\":" << quote(generic_parameter.constraint)
+                 << ",\"span\":";
+             write_span(generic_parameter.span);
+             output << '}';
+         }
+         output << "],\"hasEffectAnnotation\":"
+             << (function.has_effect_annotation ? "true" : "false")
+             << ",\"declaredEffects\":[";
+         for (std::size_t effect_index = 0;
+              effect_index < function.declared_effects.size(); ++effect_index) {
+             if (effect_index != 0) output << ',';
+             output << quote(function.declared_effects[effect_index]);
+         }
+         output << "],\"inferredEffects\":[";
+         for (std::size_t effect_index = 0;
+              effect_index < function.inferred_effects.size(); ++effect_index) {
+             if (effect_index != 0) output << ',';
+             output << quote(function.inferred_effects[effect_index]);
+         }
+         output << "],\"returnType\":" << quote(function.return_type)
                << ",\"returnTypeSymbolId\":" << function.return_type_symbol_id
                << ",\"span\":";
         write_span(function.span);
@@ -1065,6 +1381,7 @@ std::string serialize_hir_json(const HirProgram& program) {
             const auto& parameter = function.parameters[parameter_index];
             output << "{\"name\":" << quote(parameter.name)
                    << ",\"type\":" << quote(parameter.type)
+                     << ",\"ownershipMode\":" << quote(ownership_mode_name(parameter.ownership_mode))
                    << ",\"symbolId\":" << parameter.symbol_id
                    << ",\"typeSymbolId\":" << parameter.type_symbol_id
                    << ",\"span\":";

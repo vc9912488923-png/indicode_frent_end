@@ -66,11 +66,16 @@ struct HirParameter {
     SourceSpan span;
     std::uint64_t symbol_id = 0;
     std::uint64_t type_symbol_id = 0;
+    OwnershipMode ownership_mode = OwnershipMode::Value;
 };
 
 struct HirFunction {
     std::string name;
     std::uint64_t symbol_id = 0;
+    std::vector<GenericParameter> generic_parameters;
+    bool has_effect_annotation = false;
+    std::vector<std::string> declared_effects;
+    std::vector<std::string> inferred_effects;
     std::vector<HirParameter> parameters;
     std::string return_type;
     std::uint64_t return_type_symbol_id = 0;

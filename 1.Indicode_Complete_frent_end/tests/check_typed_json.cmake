@@ -10,7 +10,7 @@ if(NOT result EQUAL 0)
 endif()
 
 string(JSON schema_version ERROR_VARIABLE json_error GET "${typed_hir}" schemaVersion)
-if(json_error OR NOT schema_version EQUAL 1)
+if(json_error OR NOT schema_version EQUAL 2)
     message(FATAL_ERROR "typed HIR JSON schema version is missing or invalid: ${typed_hir}")
 endif()
 

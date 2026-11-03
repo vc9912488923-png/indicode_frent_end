@@ -13,6 +13,8 @@ add_library(indicode_frontend
     src/lexer.cpp
     src/parser.cpp
     src/sema.cpp
+    src/effects.cpp
+    src/ownership.cpp
     src/ast_printer.cpp
     src/ast_json.cpp
     src/ast_visitor.cpp

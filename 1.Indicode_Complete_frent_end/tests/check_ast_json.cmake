@@ -10,7 +10,7 @@ if(NOT result EQUAL 0)
 endif()
 
 string(JSON schema_version ERROR_VARIABLE json_error GET "${ast_json}" schemaVersion)
-if(json_error OR NOT schema_version EQUAL 1)
+if(json_error OR NOT schema_version EQUAL 2)
     message(FATAL_ERROR "AST JSON schema version is missing or invalid: ${ast_json}")
 endif()
 

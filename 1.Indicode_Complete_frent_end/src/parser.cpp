@@ -313,13 +313,35 @@ bool Parser::record_declaration() {
 bool Parser::function_declaration() {
     const auto& function_keyword = previous();
     const auto* name = consume_identifier("expected function name");
-    if (name == nullptr || consume(TokenKind::LeftParen, "expected '(' after function name") == nullptr) {
+    if (name == nullptr) {
         return false;
     }
 
     FunctionDecl function;
     function.name = name->lexeme;
     function.span.start = function_keyword.span.start;
+
+    if (match(TokenKind::Less)) {
+        do {
+            const auto* parameter_name = consume_identifier("expected generic parameter name");
+            if (parameter_name == nullptr) return false;
+            std::string constraint;
+            if (match(TokenKind::Colon)) {
+                const auto* constraint_name = consume_identifier("expected generic constraint name");
+                if (constraint_name == nullptr) return false;
+                constraint = constraint_name->lexeme;
+            }
+            function.generic_parameters.push_back(
+                {parameter_name->lexeme, constraint,
+                 {parameter_name->span.start, previous().span.end}});
+        } while (match(TokenKind::Comma));
+        if (consume(TokenKind::Greater, "expected '>' after generic parameters") == nullptr) {
+            return false;
+        }
+    }
+    if (consume(TokenKind::LeftParen, "expected '(' after function name or generic parameters") == nullptr) {
+        return false;
+    }
 
     if (!check(TokenKind::RightParen)) {
         do {
@@ -333,12 +355,18 @@ bool Parser::function_declaration() {
                       DiagnosticFixIt{insertion, ": ", "insert ':' after the parameter name"});
                 return false;
             }
+            OwnershipMode ownership_mode = OwnershipMode::Value;
+            if (match_keyword("move")) ownership_mode = OwnershipMode::Move;
+            else if (match_keyword("borrow")) ownership_mode = OwnershipMode::Borrow;
+            else if (match_keyword("borrow_mut")) ownership_mode = OwnershipMode::BorrowMut;
             const auto parameter_type = parse_type();
             if (parameter_type.empty()) {
                 return false;
             }
-            function.parameters.push_back({parameter_name->lexeme, parameter_type,
-                                           {parameter_name->span.start, previous().span.end}});
+            Parameter parameter{parameter_name->lexeme, parameter_type,
+                                {parameter_name->span.start, previous().span.end}};
+            parameter.ownership_mode = ownership_mode;
+            function.parameters.push_back(std::move(parameter));
         } while (match(TokenKind::Comma));
     }
 
@@ -350,6 +378,19 @@ bool Parser::function_declaration() {
         if (function.return_type.empty()) {
             return false;
         }
+    }
+    if (check(TokenKind::Identifier) && peek().lexeme == "effects") {
+        advance();
+        function.has_effect_annotation = true;
+        if (consume(TokenKind::LeftParen, "expected '(' after effects") == nullptr) return false;
+        if (!check(TokenKind::RightParen)) {
+            do {
+                const auto* effect_name = consume_identifier("expected effect name");
+                if (effect_name == nullptr) return false;
+                function.declared_effects.push_back(effect_name->lexeme);
+            } while (match(TokenKind::Comma));
+        }
+        if (consume(TokenKind::RightParen, "expected ')' after effects") == nullptr) return false;
     }
     if (consume(TokenKind::LeftBrace, "expected '{' before function body") == nullptr) {
         return false;
@@ -593,7 +634,9 @@ std::unique_ptr<Expr> Parser::parse_precedence(int minimum_precedence) {
 }
 
 std::unique_ptr<Expr> Parser::unary() {
-    if (match(TokenKind::Bang) || match(TokenKind::Minus) || match(TokenKind::Plus) || match(TokenKind::Tilde)) {
+    if (match(TokenKind::Bang) || match(TokenKind::Minus) || match(TokenKind::Plus) ||
+        match(TokenKind::Tilde) || match_keyword("move") || match_keyword("borrow") ||
+        match_keyword("borrow_mut")) {
         const auto operation = previous();
         auto operand = unary();
         if (!operand) {

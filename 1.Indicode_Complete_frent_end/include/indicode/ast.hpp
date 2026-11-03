@@ -59,17 +59,45 @@ struct Stmt {
     std::vector<std::unique_ptr<Stmt>> else_body;
 };
 
+enum class OwnershipMode {
+    Value,
+    Move,
+    Borrow,
+    BorrowMut
+};
+
+inline const char* ownership_mode_name(OwnershipMode mode) {
+    switch (mode) {
+    case OwnershipMode::Value: return "value";
+    case OwnershipMode::Move: return "move";
+    case OwnershipMode::Borrow: return "borrow";
+    case OwnershipMode::BorrowMut: return "borrow_mut";
+    }
+    return "value";
+}
+
 struct Parameter {
     std::string name;
     std::string type;
     SourceSpan span;
     std::uint64_t resolved_symbol_id = 0;
     std::uint64_t resolved_type_symbol_id = 0;
+    OwnershipMode ownership_mode = OwnershipMode::Value;
+};
+
+struct GenericParameter {
+    std::string name;
+    std::string constraint;
+    SourceSpan span;
 };
 
 struct FunctionDecl {
     std::string name;
     std::uint64_t symbol_id = 0;
+    std::vector<GenericParameter> generic_parameters;
+    bool has_effect_annotation = false;
+    std::vector<std::string> declared_effects;
+    std::vector<std::string> inferred_effects;
     std::vector<Parameter> parameters;
     std::string return_type;
     std::uint64_t return_type_symbol_id = 0;

@@ -27,6 +27,7 @@ private:
     };
 
     struct FunctionSignature {
+        std::vector<GenericParameter> generic_parameters;
         std::vector<std::string> parameter_names;
         std::vector<std::string> parameter_types;
         std::string return_type;
@@ -36,6 +37,7 @@ private:
     std::vector<std::unordered_map<std::string, Binding>> scopes_;
     std::unordered_map<std::string, FunctionSignature> functions_;
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> records_;
+    std::unordered_map<std::string, std::string> generic_constraints_;
     std::unordered_map<std::string, std::uint64_t> record_symbol_ids_;
     std::unordered_map<std::string, std::uint64_t> record_field_symbol_ids_;
     std::unordered_map<std::string, SourceSpan> record_declaration_spans_;

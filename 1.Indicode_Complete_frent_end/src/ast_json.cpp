@@ -133,7 +133,7 @@ std::string serialize_ast_json(const Program& program) {
         output << ']';
     };
 
-    output << "{\"schemaVersion\":1,\"records\":[";
+    output << "{\"schemaVersion\":2,\"records\":[";
     for (std::size_t index = 0; index < program.records.size(); ++index) {
         if (index != 0) output << ',';
         const auto& record = program.records[index];
@@ -158,19 +158,45 @@ std::string serialize_ast_json(const Program& program) {
     for (std::size_t index = 0; index < program.functions.size(); ++index) {
         if (index != 0) output << ',';
         const auto& function = program.functions[index];
-        output << "{\"name\":" << quote_json(function.name)
-               << ",\"symbolId\":" << function.symbol_id
-               << ",\"returnType\":" << quote_json(function.return_type)
+         output << "{\"name\":" << quote_json(function.name)
+             << ",\"symbolId\":" << function.symbol_id
+             << ",\"genericParameters\":[";
+         for (std::size_t generic_index = 0;
+              generic_index < function.generic_parameters.size(); ++generic_index) {
+             if (generic_index != 0) output << ',';
+             const auto& generic_parameter = function.generic_parameters[generic_index];
+             output << "{\"name\":" << quote_json(generic_parameter.name)
+                 << ",\"constraint\":" << quote_json(generic_parameter.constraint)
+                 << ",\"span\":";
+             write_span(output, generic_parameter.span);
+             output << '}';
+         }
+         output << "],\"returnType\":" << quote_json(function.return_type)
                << ",\"returnTypeSymbolId\":" << function.return_type_symbol_id
                << ",\"span\":";
         write_span(output, function.span);
-        output << ",\"parameters\":[";
+        output << ",\"hasEffectAnnotation\":"
+               << (function.has_effect_annotation ? "true" : "false")
+               << ",\"declaredEffects\":[";
+        for (std::size_t effect_index = 0;
+             effect_index < function.declared_effects.size(); ++effect_index) {
+            if (effect_index != 0) output << ',';
+            output << quote_json(function.declared_effects[effect_index]);
+        }
+        output << "],\"inferredEffects\":[";
+        for (std::size_t effect_index = 0;
+             effect_index < function.inferred_effects.size(); ++effect_index) {
+            if (effect_index != 0) output << ',';
+            output << quote_json(function.inferred_effects[effect_index]);
+        }
+        output << "],\"parameters\":[";
         for (std::size_t parameter_index = 0;
              parameter_index < function.parameters.size(); ++parameter_index) {
             if (parameter_index != 0) output << ',';
             const auto& parameter = function.parameters[parameter_index];
             output << "{\"name\":" << quote_json(parameter.name)
                    << ",\"type\":" << quote_json(parameter.type)
+                     << ",\"ownershipMode\":" << quote_json(ownership_mode_name(parameter.ownership_mode))
                    << ",\"typeSymbolId\":" << parameter.resolved_type_symbol_id << ",\"span\":";
             write_span(output, parameter.span);
             output << ",\"resolvedSymbolId\":" << parameter.resolved_symbol_id << '}';

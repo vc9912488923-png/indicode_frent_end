@@ -284,5 +284,53 @@ int main() {
                         [](const auto& diagnostic) { return diagnostic.code == "E-HIR-033"; }),
             "HIR verifier should reject a reference to the wrong shadowed symbol");
 
+    const indicode::SourceFile generic_source{
+        "generic_hir.indi",
+        "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+        "answer = add(20, 22)\n"
+    };
+    const auto generic_lexed = indicode::Lexer(generic_source).lex();
+    auto generic_parsed = indicode::Parser(generic_lexed.tokens).parse();
+    require(generic_lexed.diagnostics.empty() && generic_parsed.diagnostics.empty() &&
+                indicode::Analyzer().analyze(generic_parsed.program).diagnostics.empty(),
+            "generic function should parse and pass semantic inference");
+    const auto generic_hir = indicode::lower_to_hir(generic_parsed.program);
+    require(generic_hir.functions[0].generic_parameters.size() == 1 &&
+                indicode::verify_hir(generic_hir).empty(),
+            "typed HIR should preserve and independently verify generic parameters and calls");
+    const auto generic_hir_json = indicode::serialize_hir_json(generic_hir);
+    require(generic_hir_json.find("\"schemaVersion\":2") != std::string::npos &&
+                generic_hir_json.find("\"constraint\":\"Numeric\"") != std::string::npos,
+            "typed HIR JSON should preserve generic constraints in schema 2");
+
+    const indicode::SourceFile ownership_source{
+        "ownership_hir.indi",
+        "function consume(value: move List<Int>) {}\n"
+        "function observe(value: borrow List<Int>) {}\n"
+        "function run() { var items = [1]; observe(borrow items); consume(move items) }\n"
+        "function announce() effects(io) { say(\"hello\") }\n"
+    };
+    const auto ownership_lexed = indicode::Lexer(ownership_source).lex();
+    auto ownership_parsed = indicode::Parser(ownership_lexed.tokens).parse();
+    require(ownership_lexed.diagnostics.empty() && ownership_parsed.diagnostics.empty() &&
+                indicode::Analyzer().analyze(ownership_parsed.program).diagnostics.empty(),
+            "valid ownership source should pass parsing and semantic analysis");
+    const auto ownership_hir = indicode::lower_to_hir(ownership_parsed.program);
+    require(ownership_hir.functions[0].parameters[0].ownership_mode ==
+                indicode::OwnershipMode::Move && ownership_hir.functions[3].has_effect_annotation &&
+                ownership_hir.functions[3].inferred_effects == std::vector<std::string>{"io"} &&
+                indicode::verify_hir(ownership_hir).empty(),
+            "typed HIR should preserve and independently verify ownership modes and effects");
+    const auto ownership_hir_json = indicode::serialize_hir_json(ownership_hir);
+    require(ownership_hir_json.find("\"ownershipMode\":\"move\"") != std::string::npos &&
+                ownership_hir_json.find("\"inferredEffects\":[\"io\"]") != std::string::npos,
+            "typed HIR JSON should serialize ownership modes and inferred effects");
+    auto tampered_effect_hir = indicode::lower_to_hir(ownership_parsed.program);
+    tampered_effect_hir.functions[3].inferred_effects.clear();
+    const auto tampered_effect_diagnostics = indicode::verify_hir(tampered_effect_hir);
+    require(std::any_of(tampered_effect_diagnostics.begin(), tampered_effect_diagnostics.end(),
+                        [](const auto& diagnostic) { return diagnostic.code == "E-HIR-055"; }),
+            "HIR verifier should reject a serialized effect summary that disagrees with the body");
+
     std::cout << "HIR tests passed\n";
 }

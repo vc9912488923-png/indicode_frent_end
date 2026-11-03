@@ -128,7 +128,44 @@ int main() {
     const auto unsupported_lexed = indicode::Lexer(unsupported).lex();
     const auto unsupported_parsed = indicode::Parser(unsupported_lexed.tokens).parse();
     require(!unsupported_parsed.diagnostics.empty(),
-            "module and import syntax excluded from grammar v1 should be rejected");
+            "module and import syntax should be rejected without a module declaration");
+
+    const indicode::SourceFile generic_source{
+        "generic.indi",
+        "function identity<T>(value: T) -> T { return value }\n"
+        "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+    };
+    const auto generic_lexed = indicode::Lexer(generic_source).lex();
+    const auto generic_parsed = indicode::Parser(generic_lexed.tokens).parse();
+    require(generic_lexed.diagnostics.empty() && generic_parsed.diagnostics.empty() &&
+                generic_parsed.program.functions.size() == 2 &&
+                generic_parsed.program.functions[0].generic_parameters.size() == 1 &&
+                generic_parsed.program.functions[1].generic_parameters[0].constraint == "Numeric",
+            "generic function parameters and constraints should parse");
+    const auto generic_ast_json = indicode::serialize_ast_json(generic_parsed.program);
+    require(generic_ast_json.find("\"schemaVersion\":2") != std::string::npos &&
+                generic_ast_json.find("\"constraint\":\"Numeric\"") != std::string::npos &&
+                indicode::print_program(generic_parsed.program).find("add<T: Numeric>") !=
+                    std::string::npos,
+            "AST JSON and printer should preserve generic parameter constraints");
+
+    const indicode::SourceFile modes_source{
+        "modes.indi",
+        "function consume(value: move List<Int>) -> Void effects(io, mutation) { return }\n"
+        "function inspect(value: borrow List<Int>) {}\n"
+        "function update(value: borrow_mut List<Int>) {}\n"
+        "function caller(value: List<Int>) { consume(move value) }\n"
+    };
+    const auto modes_lexed = indicode::Lexer(modes_source).lex();
+    const auto modes_parsed = indicode::Parser(modes_lexed.tokens).parse();
+    require(modes_lexed.diagnostics.empty() && modes_parsed.diagnostics.empty() &&
+                modes_parsed.program.functions.size() == 4 &&
+                modes_parsed.program.functions[0].parameters[0].ownership_mode ==
+                    indicode::OwnershipMode::Move &&
+                modes_parsed.program.functions[0].has_effect_annotation &&
+                modes_parsed.program.functions[0].declared_effects.size() == 2 &&
+                modes_parsed.program.functions[3].body[0]->expression->arguments[0]->value == "move",
+            "parameter ownership modes, effect annotations, and move expressions should parse");
 
     std::cout << "Grammar tests passed\n";
 }

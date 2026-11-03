@@ -225,12 +225,13 @@ int main() {
                           }) == 3,
             "preserving block-comment trivia must retain its newline separator tokens");
 
-    constexpr std::array<indicode::Keyword, 14> keywords{
+    constexpr std::array<indicode::Keyword, 17> keywords{
         indicode::Keyword::Function, indicode::Keyword::Record, indicode::Keyword::Return,
         indicode::Keyword::If, indicode::Keyword::Else, indicode::Keyword::Repeat,
         indicode::Keyword::Times, indicode::Keyword::For, indicode::Keyword::In,
         indicode::Keyword::While, indicode::Keyword::Let, indicode::Keyword::Var,
-        indicode::Keyword::True, indicode::Keyword::False
+        indicode::Keyword::True, indicode::Keyword::False, indicode::Keyword::Move,
+        indicode::Keyword::Borrow, indicode::Keyword::BorrowMut
     };
     std::string keyword_source;
     for (const auto keyword : keywords) {

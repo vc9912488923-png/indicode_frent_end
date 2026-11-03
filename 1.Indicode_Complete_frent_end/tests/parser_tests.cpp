@@ -208,7 +208,7 @@ int main() {
     const auto escaped_parsed = indicode::Parser(escaped_lexed.tokens).parse();
     const auto ast_json = indicode::serialize_ast_json(escaped_parsed.program);
     require(escaped_lexed.diagnostics.empty() && escaped_parsed.diagnostics.empty() &&
-                ast_json.find("\"schemaVersion\":1") != std::string::npos &&
+                ast_json.find("\"schemaVersion\":2") != std::string::npos &&
                 ast_json.find("a\\\\\\\"b") != std::string::npos,
             "AST JSON should version its schema and escape string literal contents");
 

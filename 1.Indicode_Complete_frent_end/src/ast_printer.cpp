@@ -156,16 +156,40 @@ std::string print_program(const Program& program, bool include_types) {
         output << "}\n";
     }
     for (const auto& function : program.functions) {
-        output << "function " << function.name << '(';
+        output << "function " << function.name;
+        if (!function.generic_parameters.empty()) {
+            output << '<';
+            for (std::size_t index = 0; index < function.generic_parameters.size(); ++index) {
+                if (index != 0) output << ", ";
+                const auto& parameter = function.generic_parameters[index];
+                output << parameter.name;
+                if (!parameter.constraint.empty()) output << ": " << parameter.constraint;
+            }
+            output << '>';
+        }
+        output << '(';
         for (std::size_t index = 0; index < function.parameters.size(); ++index) {
             if (index != 0) {
                 output << ", ";
             }
-            output << function.parameters[index].name << ": " << function.parameters[index].type;
+            const auto& parameter = function.parameters[index];
+            output << parameter.name << ": ";
+            if (parameter.ownership_mode != OwnershipMode::Value) {
+                output << ownership_mode_name(parameter.ownership_mode) << ' ';
+            }
+            output << parameter.type;
         }
         output << ')';
         if (!function.return_type.empty()) {
             output << " -> " << function.return_type;
+        }
+        if (function.has_effect_annotation) {
+            output << " effects(";
+            for (std::size_t index = 0; index < function.declared_effects.size(); ++index) {
+                if (index != 0) output << ", ";
+                output << function.declared_effects[index];
+            }
+            output << ')';
         }
         output << "\n";
         print_statements(output, function.body, 1, include_types);

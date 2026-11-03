@@ -113,6 +113,9 @@ std::string keyword_name(Keyword keyword) {
     case Keyword::Var: return "var";
     case Keyword::True: return "true";
     case Keyword::False: return "false";
+    case Keyword::Move: return "move";
+    case Keyword::Borrow: return "borrow";
+    case Keyword::BorrowMut: return "borrow_mut";
     }
     return "invalid";
 }
@@ -122,7 +125,8 @@ bool keyword_from_name(const std::string& name, Keyword& keyword) {
         Keyword::Function, Keyword::Record, Keyword::Return, Keyword::If,
         Keyword::Else, Keyword::Repeat, Keyword::Times, Keyword::For,
         Keyword::In, Keyword::While, Keyword::Let, Keyword::Var,
-        Keyword::True, Keyword::False
+        Keyword::True, Keyword::False, Keyword::Move, Keyword::Borrow,
+        Keyword::BorrowMut
     };
     for (const auto candidate : keywords) {
         if (name == keyword_name(candidate)) {

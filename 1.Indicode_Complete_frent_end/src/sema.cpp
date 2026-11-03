@@ -1,5 +1,7 @@
 #include "indicode/sema.hpp"
 #include "indicode/const_eval.hpp"
+#include "indicode/effects.hpp"
+#include "indicode/ownership.hpp"
 
 #include <charconv>
 #include <cmath>
@@ -56,6 +58,47 @@ std::string get_list_element_type(const std::string& type) {
         return type.substr(prefix.size(), type.size() - prefix.size() - 1);
     }
     return {};
+}
+
+bool unify_type_pattern(const std::string& pattern, const std::string& actual,
+                        const std::unordered_map<std::string, std::string>& generic_constraints,
+                        std::unordered_map<std::string, std::string>& substitutions) {
+    if (generic_constraints.contains(pattern)) {
+        const auto [found, inserted] = substitutions.emplace(pattern, actual);
+        return inserted || found->second == actual;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        if (pattern.starts_with(constructor) && pattern.back() == '>' &&
+            actual.starts_with(constructor) && actual.back() == '>') {
+            return unify_type_pattern(
+                pattern.substr(constructor.size(), pattern.size() - constructor.size() - 1),
+                actual.substr(constructor.size(), actual.size() - constructor.size() - 1),
+                generic_constraints, substitutions);
+        }
+    }
+    return pattern == actual;
+}
+
+std::string substitute_generic_type(
+    const std::string& type, const std::unordered_map<std::string, std::string>& substitutions) {
+    if (const auto found = substitutions.find(type); found != substitutions.end()) {
+        return found->second;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        if (type.starts_with(constructor) && type.back() == '>') {
+            return constructor + substitute_generic_type(
+                                     type.substr(constructor.size(),
+                                                 type.size() - constructor.size() - 1),
+                                     substitutions) + ">";
+        }
+    }
+    return type;
+}
+
+bool satisfies_generic_constraint(const std::string& constraint, const std::string& type) {
+    if (constraint == "Numeric") return is_numeric_type(type);
+    if (constraint == "Integer") return is_integer_type(type);
+    return false;
 }
 
 std::string range_element_type(const std::string& type) {
@@ -301,6 +344,7 @@ SemanticResult Analyzer::analyze(Program& program) {
     diagnostics_.clear();
     functions_.clear();
     records_.clear();
+    generic_constraints_.clear();
     record_symbol_ids_.clear();
     record_field_symbol_ids_.clear();
     record_declaration_spans_.clear();
@@ -365,6 +409,19 @@ SemanticResult Analyzer::analyze(Program& program) {
     for (auto& function : program.functions) {
         function.symbol_id = 0;
         function.return_type_symbol_id = 0;
+        generic_constraints_.clear();
+        for (const auto& parameter : function.generic_parameters) {
+            if (generic_constraints_.contains(parameter.name)) {
+                add_error("E-SEMA-053", "generic type parameter is already declared",
+                          parameter.span);
+                continue;
+            }
+            if (!parameter.constraint.empty() && parameter.constraint != "Numeric" &&
+                parameter.constraint != "Integer") {
+                add_error("E-SEMA-054", "unknown generic constraint", parameter.span);
+            }
+            generic_constraints_.emplace(parameter.name, parameter.constraint);
+        }
         const auto previous_function = function_declaration_spans_.find(function.name);
         if (function.name == "say" || !numeric_conversion_target(function.name).empty() ||
             records_.contains(function.name) || functions_.contains(function.name)) {
@@ -383,6 +440,7 @@ SemanticResult Analyzer::analyze(Program& program) {
         }
         function.symbol_id = next_symbol_id_++;
         FunctionSignature signature;
+        signature.generic_parameters = function.generic_parameters;
         signature.return_type = function.return_type.empty() ? "Void" : function.return_type;
         signature.symbol_id = function.symbol_id;
         function.return_type_symbol_id = type_symbol_id(signature.return_type);
@@ -401,15 +459,23 @@ SemanticResult Analyzer::analyze(Program& program) {
         functions_.emplace(function.name, std::move(signature));
         function_declaration_spans_.emplace(function.name, function.span);
     }
+    generic_constraints_.clear();
 
     analyze_statements(program.statements);
     for (auto& function : program.functions) {
         push_scope();
         in_function_ = true;
+        generic_constraints_.clear();
+        for (const auto& parameter : function.generic_parameters) {
+            generic_constraints_.emplace(parameter.name, parameter.constraint);
+        }
         current_return_type_ = function.return_type.empty() ? "Void" : function.return_type;
         for (auto& parameter : function.parameters) {
             parameter.resolved_symbol_id =
-                declare_binding(parameter.name, {parameter.type, false, parameter.span}, parameter.span);
+                declare_binding(parameter.name,
+                                {parameter.type,
+                                 parameter.ownership_mode == OwnershipMode::BorrowMut,
+                                 parameter.span}, parameter.span);
         }
         analyze_statements(function.body);
         if (current_return_type_ != "Void" && !always_returns(function.body)) {
@@ -417,8 +483,18 @@ SemanticResult Analyzer::analyze(Program& program) {
         }
         in_function_ = false;
         current_return_type_ = "Void";
+        generic_constraints_.clear();
         pop_scope();
     }
+
+    auto effect_result = EffectChecker{}.check(program);
+    diagnostics_.insert(diagnostics_.end(),
+                        std::make_move_iterator(effect_result.diagnostics.begin()),
+                        std::make_move_iterator(effect_result.diagnostics.end()));
+    auto ownership_result = OwnershipChecker{}.check(program);
+    diagnostics_.insert(diagnostics_.end(),
+                        std::make_move_iterator(ownership_result.diagnostics.begin()),
+                        std::make_move_iterator(ownership_result.diagnostics.end()));
 
     pop_scope();
     return {std::move(diagnostics_)};
@@ -429,6 +505,7 @@ void Analyzer::add_error(const char* code, const char* message, SourceSpan span)
 }
 
 bool Analyzer::is_known_type(const std::string& type) const {
+    if (generic_constraints_.contains(type)) return true;
     if (type.starts_with("Tensor<")) {
         return is_tensor_type(type, [this](const std::string& element) {
             return is_known_type(element);
@@ -689,11 +766,21 @@ std::string Analyzer::analyze_expression(Expr& expression) {
     }
     case ExprKind::Unary: {
         const auto operand_type = analyze_expression(*expression.left);
-        if (expression.value == "!" && operand_type == "Bool") {
-            type = "Bool";
-        } else if ((expression.value == "+" || expression.value == "-") && is_numeric_type(operand_type)) {
+        if (expression.value == "move" || expression.value == "borrow" ||
+            expression.value == "borrow_mut") {
             type = operand_type;
-        } else if (expression.value == "~" && is_integer_type(operand_type)) {
+        } else if (expression.value == "!" && operand_type == "Bool") {
+            type = "Bool";
+        } else if ((expression.value == "+" || expression.value == "-") &&
+                   (is_numeric_type(operand_type) ||
+                    (generic_constraints_.contains(operand_type) &&
+                     (generic_constraints_.at(operand_type) == "Numeric" ||
+                      generic_constraints_.at(operand_type) == "Integer")))) {
+            type = operand_type;
+        } else if (expression.value == "~" &&
+                   (is_integer_type(operand_type) ||
+                    (generic_constraints_.contains(operand_type) &&
+                     generic_constraints_.at(operand_type) == "Integer"))) {
             type = operand_type;
         } else if (operand_type != error_type) {
             add_error("E-SEMA-014", "invalid operand type for unary operator", expression.span);
@@ -713,7 +800,11 @@ std::string Analyzer::analyze_expression(Expr& expression) {
                    expression.value == "<" || expression.value == "<=" ||
                    expression.value == ">" || expression.value == ">=") {
             if (left_type == right_type && left_type != error_type &&
-                (is_numeric_type(left_type) || left_type == "Char" || left_type == "Text" ||
+                                (is_numeric_type(left_type) ||
+                                 (generic_constraints_.contains(left_type) &&
+                                    (generic_constraints_.at(left_type) == "Numeric" ||
+                                     generic_constraints_.at(left_type) == "Integer")) ||
+                                 left_type == "Char" || left_type == "Text" ||
                  ((expression.value == "==" || expression.value == "!=") &&
                   left_type == "Bool"))) {
                 type = "Bool";
@@ -728,7 +819,9 @@ std::string Analyzer::analyze_expression(Expr& expression) {
     case ExprKind::Range: {
         const auto start_type = analyze_expression(*expression.left);
         const auto end_type = analyze_expression(*expression.right);
-        if (is_integer_type(start_type) && start_type == end_type) {
+          if ((is_integer_type(start_type) ||
+             (generic_constraints_.contains(start_type) &&
+              generic_constraints_.at(start_type) == "Integer")) && start_type == end_type) {
             type = "Range<" + start_type + ">";
         } else if (start_type != error_type && end_type != error_type) {
             add_error("E-SEMA-045", "range bounds must have the same integer type", expression.span);
@@ -834,6 +927,11 @@ std::string Analyzer::analyze_expression(Expr& expression) {
                 std::vector<bool> assigned(argument_types.size(), false);
                 bool arguments_match = true;
                 std::size_t next_positional = 0;
+                std::unordered_map<std::string, std::string> substitutions;
+                std::unordered_map<std::string, std::string> generic_constraints;
+                for (const auto& parameter : function->second.generic_parameters) {
+                    generic_constraints.emplace(parameter.name, parameter.constraint);
+                }
                 for (std::size_t index = 0; index < argument_types.size(); ++index) {
                     std::size_t parameter_index = argument_types.size();
                     const std::string argument_name = index < expression.argument_names.size()
@@ -867,9 +965,12 @@ std::string Analyzer::analyze_expression(Expr& expression) {
                         continue;
                     }
                     assigned[parameter_index] = true;
-                    if (argument_types[index] != error_type &&
-                        argument_types[index] != function->second.parameter_types[parameter_index]) {
-                        arguments_match = false;
+                    if (argument_types[index] != error_type) {
+                        if (!unify_type_pattern(
+                                function->second.parameter_types[parameter_index],
+                                argument_types[index], generic_constraints, substitutions)) {
+                            arguments_match = false;
+                        }
                     }
                 }
                 for (std::size_t index = 0; index < assigned.size(); ++index) {
@@ -878,10 +979,26 @@ std::string Analyzer::analyze_expression(Expr& expression) {
                         arguments_match = false;
                     }
                 }
+                for (const auto& parameter : function->second.generic_parameters) {
+                    const auto inferred = substitutions.find(parameter.name);
+                    if (inferred == substitutions.end()) {
+                        if (arguments_match) {
+                            add_error("E-SEMA-055", "cannot infer generic type parameter",
+                                      expression.span);
+                        }
+                        arguments_match = false;
+                    } else if (!parameter.constraint.empty() &&
+                               !satisfies_generic_constraint(parameter.constraint,
+                                                             inferred->second)) {
+                        add_error("E-SEMA-056", "generic argument does not satisfy its constraint",
+                                  expression.span);
+                        arguments_match = false;
+                    }
+                }
                 if (!arguments_match) {
                     add_error("E-SEMA-020", "function argument type does not match signature", expression.span);
                 } else {
-                    type = function->second.return_type;
+                    type = substitute_generic_type(function->second.return_type, substitutions);
                     expression.resolved_symbol = expression.value;
                     expression.resolved_symbol_id = function->second.symbol_id;
                 }
@@ -985,7 +1102,12 @@ bool Analyzer::type_integer_literal(Expr& expression, const std::string& type) {
 
 std::string Analyzer::numeric_binary_type(Expr& expression, const std::string& left,
                                           const std::string& right) {
-    if (left == right && is_numeric_type(left)) {
+    const auto generic_numeric = [&](const std::string& type) {
+        const auto constraint = generic_constraints_.find(type);
+        return constraint != generic_constraints_.end() &&
+               (constraint->second == "Numeric" || constraint->second == "Integer");
+    };
+    if (left == right && (is_numeric_type(left) || generic_numeric(left))) {
         return left;
     }
     if (left != error_type && right != error_type) {
