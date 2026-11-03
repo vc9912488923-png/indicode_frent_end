@@ -15,11 +15,11 @@ The old PDF described a 777-concept catalogue across the whole language/compiler
 
 | Front-end catalogue status | Count |
 |---|---:|
-| Implemented to the v1 scoped acceptance level | 35 |
+| Implemented to the v1 scoped acceptance level | 38 |
 | Partially implemented; more acceptance work remains | 0 |
-| Not implemented yet | 5 |
+| Not implemented yet | 2 |
 | **Front-end catalogue total** | **40** |
-| **Still unfinished (partial + not implemented)** | **5** |
+| **Still unfinished (partial + not implemented)** | **2** |
 
 These inventory counts and the 97.25% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
 
@@ -68,7 +68,9 @@ These inventory counts and the 97.25% weighted estimate measure different things
 | 481 | Diagnostic engine | Done | Secondary notes, stable severity/code policy, multiple-error recovery, applied-fix-it validation, and deterministic text/JSON golden tests are implemented. |
 | 482 | JSON diagnostics | Done | [DIAGNOSTICS_V1.md](./DIAGNOSTICS_V1.md) publishes schema v1; golden tests cover every field, locations, notes, fixes, escaping, ordering, and the version envelope. |
 | 483 | Language server index | Done | HIR-backed API indexes symbol definitions, name/call/member references, lexical scopes and byte-offset scope lookup; rebuilding for a new source revision removes stale entries. This is not an LSP server and requires a full HIR rebuild. |
-| 484 | Incremental parse support | Not started | Define edit ranges/cache invalidation, implement incremental parsing, and prove results match clean full parses. |
+| 484 | Incremental parse support | Done | Edit ranges, revision-based invalidation, and incremental parsing are implemented and verified against clean re-parses after malformed and repaired edits. |
+| 478 | Effect checker | Done | `effects.cpp` infers and validates IO/allocation/mutation effects, including direct and transitive calls, with diagnostics for unknown/duplicate/undeclared effects. |
+| 479 | Ownership checker | Done | `ownership.cpp` validates move/borrow/borrow_mut semantics, conflicting borrows, use-after-move, and call-site ownership matching. |
 
 ## Work packages and acceptance gates
 
@@ -102,7 +104,7 @@ Implement these in dependency order. A work package is accepted only when its sp
 
 ### E. Finish tooling and release acceptance
 
-- Complete JSON diagnostic schema, fix-it behavior, and incremental parse support if retained in v1 scope; symbol/reference and module/import/overload resolver APIs are implemented.
+- Complete JSON diagnostic schema and fix-it behavior; symbol/reference, module/import/overload resolver APIs, effect checking, ownership checking, and incremental parsing are all part of the accepted v1 scope for this front-end checkpoint.
 - Add a requirement-linked conformance suite for every v1 grammar/type/diagnostic rule.
 - Add coverage-guided lexer/parser fuzzing, sanitizer jobs, clean offline builds, CI, and installed-package consumer checks.
 - Ensure all examples and docs match behavior; run all tests from a fresh Release build.

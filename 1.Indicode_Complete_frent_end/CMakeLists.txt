@@ -12,6 +12,7 @@ add_library(indicode_frontend
     src/source.cpp
     src/lexer.cpp
     src/parser.cpp
+    src/incremental_parser.cpp
     src/sema.cpp
     src/effects.cpp
     src/ownership.cpp
@@ -118,6 +119,10 @@ if(BUILD_TESTING)
     add_executable(indicode_parser_robustness_tests tests/parser_robustness_tests.cpp)
     target_link_libraries(indicode_parser_robustness_tests PRIVATE indicode_frontend)
     add_test(NAME parser_robustness_tests COMMAND indicode_parser_robustness_tests)
+
+    add_executable(indicode_incremental_parser_tests tests/incremental_parser_tests.cpp)
+    target_link_libraries(indicode_incremental_parser_tests PRIVATE indicode_frontend)
+    add_test(NAME incremental_parser_tests COMMAND indicode_incremental_parser_tests)
 
     add_test(NAME cli_check COMMAND indicode check ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/hello.indi)
     add_test(NAME cli_record_check COMMAND indicode check ${CMAKE_CURRENT_SOURCE_DIR}/examples/records.indi)
