@@ -1,0 +1,6 @@
+function add(a: Int, b: Int) -> Int {
+    return a + b
+}
+
+answer = add(20, 22)
+say(answer)

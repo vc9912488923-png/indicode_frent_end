@@ -1,0 +1,3 @@
+function preserve_batch(batch: Tensor<Float, [Batch, 784]>) -> Tensor<Float, [Batch, 784]> {
+    return batch
+}

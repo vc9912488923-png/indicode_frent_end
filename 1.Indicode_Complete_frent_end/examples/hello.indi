@@ -1,0 +1,17 @@
+function add(a: Int, b: Int) -> Int {
+    return a + b
+}
+
+/* Nested comments are supported:
+   /* inner note */
+*/
+Int2 score = 30000
+mask = 0b1111
+population = 1_000
+items = [20, 22]
+answer = add(b: items[1], a: items[0])
+for item in items {
+    say(item)
+}
+accent = "\u{e9}"
+say(answer)
