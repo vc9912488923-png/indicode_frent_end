@@ -1,5 +1,7 @@
 # AST ownership and lifetime v1
 
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+
 `Program` owns the parsed syntax tree. Declaration and statement collections
 hold their nodes by value or `std::unique_ptr`; expression children and
 arguments are owned by their parent. AST names, literal spellings, inferred

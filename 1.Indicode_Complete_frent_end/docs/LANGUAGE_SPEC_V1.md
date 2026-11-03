@@ -1,6 +1,8 @@
 # Indicode Front-End Language Specification
 
-**Grammar version:** 1.0.0  
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+
+**Grammar version:** 1.0.0
 **Status:** Normative for the syntax accepted by this front-end release.
 
 This specification defines the source syntax parsed by the C++20 front end. It
@@ -18,7 +20,7 @@ Static binding and typing rules are specified separately in
 Source is UTF-8. Invalid UTF-8 is diagnosed. Identifiers are ASCII and have the
 form `[A-Za-z_][A-Za-z0-9_]*`. The reserved words are:
 
-`function record return if else repeat times for in while let var true false`
+`function record return if else repeat times for in while let var true false move borrow borrow_mut`
 
 Integer literals are decimal, binary (`0b`), octal (`0o`), or hexadecimal
 (`0x`), with underscores permitted only between valid digits. Decimal floating
@@ -47,9 +49,18 @@ record-declaration
                    "}" ;
 field            = identifier, ":", type ;
 function-declaration
-                 = "function", identifier, "(", [ parameter, { ",", parameter } ], ")",
-                   [ "->", type ], block ;
-parameter        = identifier, ":", type ;
+                 = "function", identifier, [ generic-parameters ],
+                   "(", [ parameter, { ",", parameter } ], ")",
+                   [ "->", type ], [ effect-annotation ], block ;
+generic-parameters
+                 = "<", generic-parameter, { ",", generic-parameter }, ">" ;
+generic-parameter
+                 = identifier, [ ":", ( "Numeric" | "Integer" ) ] ;
+parameter        = identifier, ":", [ ownership-mode ], type ;
+ownership-mode   = "move" | "borrow" | "borrow_mut" ;
+effect-annotation
+                 = "effects", "(", [ effect-name, { ",", effect-name } ], ")" ;
+effect-name      = identifier ;
 type             = "Tensor", "<", type, ",", "[", dimension, { ",", dimension }, "]", ">"
                  | identifier, [ "<", type, ">" ] ;
 dimension        = identifier | integer-literal ;
@@ -68,7 +79,8 @@ statement        = "let", identifier, [ ":", type ], "=", expression
 conditional      = "if", expression, block, [ "else", (block | conditional) ] ;
 expression       = prefix-expression, { binary-operator, prefix-expression } ;
 prefix-expression
-                 = ( "!" | "+" | "-" | "~" ), prefix-expression
+                 = ( "!" | "+" | "-" | "~" | "move" | "borrow" | "borrow_mut" ),
+                   prefix-expression
                  | postfix-expression ;
 postfix-expression
                  = primary, { index | member } ;
@@ -91,13 +103,17 @@ separator        = newline | ";" ;
 The parser rejects positional call arguments after a named argument. Calls and
 record construction use the same syntax; semantic analysis resolves the name.
 The `if` production is recursively nestable, so any-length `else if` chains
-are accepted. The legacy `identifier identifier = expression` declaration
-form is the non-generic `type identifier` alternative above.
+are accepted. The legacy `identifier identifier = expression` declaration form is the
+non-generic `type identifier` alternative above. Generic function declarations
+support inferred type parameters and the `Numeric` and `Integer` constraints;
+generic record declarations are not supported. Parameter ownership modes and
+function effect annotations are part of the parsed syntax and are checked by
+the semantic analyzer.
 
-Modules/imports, generic function or record declarations, overloads, and
-declaration visibility are explicitly outside grammar v1. `List<T>` is the
-single-argument generic type spelling accepted by the parser; tensor types use
-the dedicated shape form shown above.
+Modules/imports, overload declarations, and declaration visibility are
+explicitly outside grammar v1. `List<T>` and `Range<T>` use the single-type-
+argument generic type form accepted by the parser; tensor types use the
+dedicated shape form shown above.
 
 ## Expression precedence and associativity
 
@@ -115,7 +131,9 @@ than prefix operators.
 | 6 | `+`, `-` | left |
 | 7 | `*`, `/`, `%` | left |
 
-Prefix `!`, `+`, `-`, and `~` are right-nested. Parentheses override precedence.
+Prefix operators are right-nested. Parentheses override precedence. Ownership
+operators are syntactically prefix forms; semantic rules restrict where they
+may be used.
 
 ## Scope and compatibility
 
@@ -139,8 +157,14 @@ dimension agreement; symbolic names match literally. Tensor operations,
 broadcasting, dynamic shape guards, and device placement are unsupported in
 v1, so there is no broadcast or device compatibility rule to apply.
 
-Ownership/borrowing and effect annotations/checking are not represented in v1.
-They require a future language-version and semantic-design decision.
+Ownership modes are a deliberately limited static check: `move`, `borrow`, and
+`borrow_mut` are checked against parameter modes at call sites; use after move,
+conflicting borrows in one call, and mutable borrowing of immutable bindings
+are diagnosed. This is not a general lifetime, aliasing, or unsafe-code model.
+Effect annotations accept `io`, `allocation`, and `mutation`; these effects are
+inferred from supported operations and transitive calls and checked against an
+annotation when one is present. The effect model does not describe runtime or
+backend behavior.
 
 Control-flow analysis treats `return` as terminating, and a conditional as
 terminating only when it has an `else` and every branch terminates. `while`,

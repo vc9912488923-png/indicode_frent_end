@@ -1,5 +1,7 @@
 # Parser recovery v1
 
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+
 Parser recovery is best-effort and does not change whether a program is valid:
 any syntax diagnostic still makes the parse unsuccessful for compilation.
 The parser keeps successfully parsed nodes before and after malformed input.

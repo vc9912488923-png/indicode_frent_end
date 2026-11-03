@@ -1,6 +1,8 @@
 # Indicode Compiler Front-End Status Report
 
-**Status date:** 2026-11-03  
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+
+**Status date:** 2026-11-03
 **Scope:** Indicode front end only; LLVM/backend/runtime work is excluded.
 
 The companion [catalogue audit PDF](../Compiler_Front_End_Remaining_Work.pdf)
@@ -15,34 +17,34 @@ valid input to a typed HIR that is independently verified.
 
 | Measure | Current status |
 |---|---:|
-| Weighted front-end completion estimate | **97.25% (rounded to 97%)** |
-| Front-end catalogue items done to current v1 scope | **40 / 40** |
+| Weighted front-end readiness estimate | **97.25% (rounded to 97%)** |
+| Front-end catalogue items implemented and tested at their stated scope | **40 / 40** |
 | Partially implemented catalogue items | **0 / 40** |
 | Not started catalogue items | **0 / 40** |
 | Current CTest suite | **23 / 23 passed** |
 
-The 97.25% figure is a judgment-based, weighted estimate of the front-end
-acceptance areas below. It is not the percentage of the 40-item catalogue:
-40/40 items equals 100.0% by count, while the weighted estimate gives much more
-credit to mature build, lexer, parser, and semantic areas. Neither figure
-means that the entire language, LLVM compiler, runtime, or original 777-item
-project catalogue is complete, but the front-end checklist itself is fully
-implemented under the agreed v1 scope.
+The 97.25% figure is a judgment-based, weighted estimate of front-end
+readiness, including release and conformance gaps. It is not the percentage
+of the 40-item catalogue: the code audit found an implementation and focused
+test for all 40 items at their stated API or v1 acceptance level. The count
+does not mean all APIs are integrated into source syntax, that every possible
+language program is supported, or that the complete compiler is finished.
 
 ## Scope and limitations
 
-The agreed working boundary is a documented, single-file Indicode v1 front
-end that can produce verified typed HIR. Grammar and semantics v1 are
-specified in [LANGUAGE_SPEC_V1.md](./LANGUAGE_SPEC_V1.md) and
-[SEMANTICS_V1.md](./SEMANTICS_V1.md).
+The working boundary is a documented Indicode v1 front end that can produce
+verified typed HIR. The accepted syntax and static rules are specified in
+[LANGUAGE_SPEC_V1.md](./LANGUAGE_SPEC_V1.md) and
+[SEMANTICS_V1.md](./SEMANTICS_V1.md). Package version 0.9.8 and grammar
+version 1.0.0 are separate version numbers.
 
 The v1 parser remains single-file and does not accept module/import or overload
 syntax. Public resolution APIs provide dotted module path lookup,
 manifest-based imports, alias/visibility/cycle checks, and exact-signature
 overload selection; they are not yet wired into parsing, semantic analysis, or
-the CLI. Generic declarations, constraint checks, and type substitution are
-implemented and verified in the semantic analyzer. Effect checking and
-ownership/borrowing validation are also in place and enforced. Incremental
+the CLI. Generic function declarations, constraint checks, type substitution,
+effect checking, and the documented limited ownership/borrowing checks are
+implemented in the parser and semantic analyzer. Incremental
 parsing is implemented at the source-edit level with revision-based
 revalidation and clean reparse matching for repaired or invalid fragments.
 The source-aware symbol/reference index is available as an HIR snapshot API;
@@ -58,14 +60,14 @@ policy remain.
 | Area | Weight | Done | Points | Evidence and remaining gap |
 |---|---:|---:|---:|---|
 | Project/build foundation | 5% | 95% | 4.75 | C++20/CMake library, CLI, CTest, install/export package and separate package consumer; release CI remains. |
-| Source manager and diagnostics | 10% | 97% | 9.70 | Owned source buffers, indexed line tables, byte/scalar columns, tab-aware diagnostics, notes, fix-its and JSON schema v1; terminal display-width and editor integration remain. |
+| Source manager and diagnostics | 10% | 97% | 9.70 | Owned source buffers, indexed line tables, byte/scalar columns, tab-aware diagnostics, notes, fix-its and diagnostic JSON schema v1; terminal display-width and editor integration remain. |
 | Lexer | 15% | 92% | 13.80 | Typed token payloads, trivia, UTF-8 validation, strings, radix integers, separators and nested comments; Unicode identifiers, suffix policy and complete numeric grammar remain. |
 | Parser and AST | 15% | 99% | 14.85 | Grammar v1, precedence, recovery, golden printer, exhaustive visitor and ownership/lifetime contract; broader conformance remains. |
 | Name resolution | 10% | 96% | 9.60 | v1 scopes/namespaces and stable identities, plus tested module/import and exact-signature overload resolution APIs; grammar/analyzer integration remains. |
-| Type checking and semantic validation | 15% | 99% | 14.85 | v1 declarations, expressions, calls, conversions, records, collections, tensor shapes, constants and conservative flow/return checking; ownership/effects and tensor operations remain outside v1. |
-| Typed HIR and verification | 15% | 99% | 14.85 | AST lowering, stable symbols, schema-v1 JSON and independent checks of types, scopes, identities, calls, mutability and return paths; deserialization and broader compatibility guarantees remain. |
-| CLI and diagnostics tooling | 5% | 99% | 4.95 | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts, schema-v1 diagnostics, and HIR symbol/reference index; editor-protocol integration and terminal display-width support remain. |
-| Tests, docs and integration | 10% | 99% | 9.90 | 22 passing tests including AST scalability, symbol index, module/import/overload resolution, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
+| Type checking and semantic validation | 15% | 99% | 14.85 | v1 declarations, generic functions/constraints, effects, limited ownership modes, expressions, calls, conversions, records, collections, tensor shapes, constants and conservative flow/return checks; full language and runtime semantics remain outside scope. |
+| Typed HIR and verification | 15% | 99% | 14.85 | AST lowering, stable symbols, AST/HIR JSON schema v2 and independent checks of types, scopes, identities, calls, ownership/effect metadata, mutability and return paths; deserialization and broader compatibility guarantees remain. |
+| CLI and diagnostics tooling | 5% | 99% | 4.95 | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts, diagnostic JSON schema v1, and HIR symbol/reference index; editor-protocol integration and terminal display-width support remain. |
+| Tests, docs and integration | 10% | 99% | 9.90 | 23 passing CTest cases including AST scalability, symbol index, module/import/overload APIs, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
 | **Total** | **100%** |  | **97.25%** | **Rounded display: 97%.** |
 
 Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 = 97.25`.
@@ -99,7 +101,7 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 =
 - Documented AST ownership/lifetime contract. `Program` owns syntax nodes;
   nodes do not borrow token/source text. Source contents must still be retained
   separately when source excerpts are needed.
-- Schema-versioned AST JSON and source spans.
+- AST JSON schema version 2 and source spans.
 
 ### Name binding, types and semantic checks
 
@@ -109,7 +111,8 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 =
   references.
 - Type inference/checking for supported declarations, literals, expressions,
   operators, function calls, named arguments, records, lists, text, indexing,
-  integer ranges, and checked numeric conversions.
+  integer ranges, generic function constraints/substitution, and checked
+  numeric conversions.
 - Static tensor type validation for numeric elements and exact rank,
   dimensions, and element types. Symbolic dimensions match by name; tensor
   operations/broadcasting/device placement are not supported.
@@ -118,6 +121,8 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 =
   256-node evaluation budget.
 - Condition/count/return checks, unreachable-statement diagnostics, and
   conservative definite-return analysis. A loop is not assumed to execute.
+- Effect inference for I/O, allocation, mutation and transitive calls; limited
+  ownership modes with move/use-after-move and call-scoped borrow checks.
 - Semantic rules are tested and independently rechecked in typed HIR where
   applicable.
 
@@ -127,8 +132,9 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 =
   identifiers, notes/secondary spans, fix-its and multi-error reporting.
 - Diagnostic JSON schema v1 with version envelope, locations, notes, fix-it
   data, escaping, deterministic ordering and golden-output tests.
-- Project-owned typed HIR lowering and independent verification of types,
-  symbols, visibility, mutability, calls, loops, returns and control flow.
+- Project-owned typed HIR schema version 2 and independent verification of
+  types, symbols, visibility, mutability, calls, loops, returns, ownership
+  modes, and effect summaries.
 - CLI commands: `check`, `tokens`, `ast`, `ast-json`, `typed`, and `typed-json`;
   JSON output is schema-versioned.
 - CMake install/export package and a separately built package-consumer test.
@@ -149,16 +155,18 @@ Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 =
 
 ## Catalogue audit: all 40 front-end items
 
-The original front-end catalogue covers IDs 445–484. “Done” means accepted
-for the documented, implemented v1 scope; it does not imply future features
-listed under “Not started”.
+The original front-end catalogue covers IDs 445–484. “Implemented and tested”
+means the code and focused tests meet the stated v1 or public-API acceptance
+level; API-only items and their integration limits are identified explicitly.
 
 | Status | IDs | Concepts |
 |---|---|---|
-| Done (40) | 445–484 | All front-end catalogue items are implemented under the agreed v1 scope, including generic constraint solving, type substitution, effect checking, ownership validation, and incremental parsing. |
+| Implemented and tested (40) | 445–484 | Code and focused-test evidence covers all catalogue items at their stated v1 or public-API acceptance level. Resolver and index APIs have the integration boundaries described above; this count is not a claim of full-language or complete-compiler readiness. |
 
 There are no catalogue items currently marked “Partial” or “Not started”. The
-front-end catalogue is therefore complete under the current v1 scope.
+front-end catalogue is complete by item count for this audit. Weighted
+front-end readiness remains 97.25%, and source-language integration and
+production/release readiness remain incomplete.
 
 ## Remaining work to reach the next milestones
 
@@ -172,15 +180,15 @@ front-end catalogue is therefore complete under the current v1 scope.
 
 ## Verification recorded for this report
 
-- CMake build succeeds in the out-of-tree directory
-  `/tmp/indicode-partial-build`.
-- Full CTest suite passes: **23/23**.
+- A fresh Release CMake configure/build succeeds; the full CTest suite passes:
+  **23/23**.
 - Covered tests include lexer/parser/AST/visitor/semantics/HIR/diagnostics,
   AST large-input destruction, symbol definitions/references/scopes/rebuild
   invalidation, module/import/overload resolver APIs, incremental parser
   revalidation for malformed and repaired fragments, CLI JSON,
   malformed-input robustness, and installed-package consumption.
-- `git diff --check` passes for the report update.
+- AST and typed-HIR JSON emit schema version 2; diagnostic JSON emits schema
+  version 1.
 
 ## Related specifications
 

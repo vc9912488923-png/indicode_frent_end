@@ -1,5 +1,9 @@
 # Diagnostic output schema v1
 
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+This document versions diagnostic JSON independently from the package and from
+AST/HIR JSON.
+
 The `--json-diagnostics` option writes one JSON object:
 
 ```json

@@ -1,6 +1,7 @@
 # Strict Community Rules
 
 Updated: 2026-11-03
+Front-end package version: 0.9.8 (pre-release; not a complete compiler)
 
 These rules protect the project's scope, build size, maintainability, and community trust. They apply to every contribution, including changes proposed by maintainers and automated coding tools.
 

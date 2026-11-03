@@ -1,7 +1,9 @@
 # Compiler Front-End: Remaining Work and Completion Plan
 
-**Status date:** 2026-11-03  
-**Scope:** Indicode compiler front end only. This plan replaces the previous all-area blueprint PDF.
+**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+
+**Status date:** 2026-11-03
+**Scope:** Indicode compiler front end only. This code audit replaces the previous all-area blueprint PDF.
 
 For the consolidated progress, completed-work summary, percentage breakdown, and remaining roadmap, see the [front-end status report](./FRONT_END_STATUS_REPORT.md) and its [PDF](../Compiler_Front_End_Status_Report.pdf).
 
@@ -9,112 +11,105 @@ For the consolidated progress, completed-work summary, percentage breakdown, and
 
 The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. It does not generate LLVM IR, machine code, executables, or run programs.
 
-The current progress report calculates a **97.25% weighted estimate**, displayed as **97%**. The estimated gap is **2.75 percentage points** on that judgment-based scale. This is not a claim that 97% of the language specification or 97% of the PDF catalogue is implemented.
+The current weighted front-end readiness estimate is **97.25%**, displayed as **97%**. The estimate includes broader conformance and release-readiness gaps; it is not the percentage of the catalogue or a measure of how much of a complete compiler exists.
 
 The old PDF described a 777-concept catalogue across the whole language/compiler project. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
 
 | Front-end catalogue status | Count |
 |---|---:|
-| Implemented to the v1 scoped acceptance level | 40 |
-| Partially implemented; more acceptance work remains | 0 |
-| Not implemented yet | 0 |
+| Implemented and focused-tested at the stated v1 or public-API acceptance level | 40 |
+| Partially implemented at that acceptance level | 0 |
+| No implementation at that acceptance level | 0 |
 | **Front-end catalogue total** | **40** |
 | **Still unfinished (partial + not implemented)** | **0** |
 
-These inventory counts and the 97.25% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
+These inventory counts and the 97.25% weighted estimate measure different things. Some catalogue entries are library APIs and are not integrated into the single-file source grammar, semantic analyzer, CLI, or an LSP. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
 
-## Remaining catalogue entries
+## Code audit of all 40 front-end entries
 
-“Done” means the concept has an implementation and focused test for the documented v1 scope. “Partial” means a subset exists, but the listed completion evidence is still required. “Not started” means there is no implementation to accept yet. Features excluded from v1 remain visible in their own catalogue rows rather than being silently counted as implemented.
+“Implemented and tested” means source code and focused test evidence exist at the item’s stated v1 or public-API scope. It does not claim that every API has source-language syntax or production-grade integration. The evidence below refers to implementation files and CTest targets rather than treating an earlier report as proof.
 
-| ID | PDF concept | Audit status | Work / evidence still needed |
+| ID | PDF concept | Audit status | Code/test evidence and scope boundary |
 |---:|---|---|---|
-| 445 | Source manager | Done | Source ownership, source IDs, lookup, and bounds tests are implemented. |
-| 446 | Source buffer | Done | Multiple owned source buffers and stable const access are tested. |
-| 447 | Source span | Done | Source locations/spans are represented and location boundaries are tested. |
-| 448 | Line table | Done | CR, LF, and CRLF line boundaries, including trailing empty lines, are tested. |
-| 449 | Column mapping | Done | Byte offsets, UTF-8 scalar columns, and tab stops are distinct and tested; terminal width policy is tracked under diagnostics. |
-| 450 | UTF-8 validator | Done | Malformed UTF-8 is diagnosed in source tokens, strings, and comments. |
-| 451 | Token kind | Done | Public token kinds cover every v1 punctuation/operator and invalid/EOF states; keywords have a typed 14-value inventory, and comments are represented as trivia. |
-| 452 | Token payload | Done | Keywords, radix integers, normalized floats, and escape-preserving string contents have typed payloads; focused tests also verify original spelling and source spans. |
-| 453 | Lexer state | Done | EOF handling is deterministic; malformed-input recovery and lexer robustness are covered by focused and smoke tests. |
-| 454 | Trivia preservation | Done | Whitespace and line/nested-block comments retain exact source spelling and spans separately from parser tokens; block-comment newline separators remain tokens. |
-| 455 | Parser state | Done | Parser position and error state are explicit; boundary, malformed-input, and progress tests pass. |
-| 456 | Recursive descent parser | Done | Implements every declaration, statement, and type form accepted by the normative v1 grammar; imports and generic declarations are excluded. Recovery is completed and tracked separately under 464–465. |
-| 457 | Pratt expression parser | Done | Normative precedence/associativity and postfix rules have coverage for every binary operator, prefix nesting, and member/index binding. |
-| 458 | Grammar version | Done | Public grammar version 1.0.0 matches the normative syntax specification; syntax contract and compatibility policy are documented and checked. |
-| 459 | AST context | Done | [AST_CONTEXT_V1.md](./AST_CONTEXT_V1.md) specifies that `Program` owns the AST, parser tokens are borrowed only during parsing, and source text must be retained separately to render spans. A returned program is tested after parser/source destruction. |
-| 460 | AST node arena | Done | Retain documented `unique_ptr` ownership: a 10,000-statement AST parses and destroys successfully. A local GCC 13.3 default-build run measured 27 ms parse and 2 ms destruction; timings are informational, and no arena was justified by this small benchmark. |
-| 461 | AST visitor | Done | Public `AstVisitor` has required callbacks for every declaration, statement kind, and expression kind; `walk_ast` traverses the full tree and tests assert complete kind coverage. |
-| 462 | AST printer | Done | Deterministic golden output covers every v1 declaration, statement, expression kind, prefix operator, and binary operator. |
-| 463 | AST serializer | Done | AST JSON schema version 1 serializes declarations, node kinds, names, arguments, and source spans; structure, escaping, and schema-version output are tested. Cross-version compatibility guarantees remain part of broader release policy. |
-| 464 | Syntax recovery | Done | Declaration, statement, and delimited-expression recovery preserve later declarations and valid sibling expressions; malformed-input tests verify diagnostics and retained AST nodes. |
-| 465 | Error synchronization | Done | [ERROR_RECOVERY_V1.md](./ERROR_RECOVERY_V1.md) specifies synchronization boundaries; regression tests cover multiple errors and cascading-error suppression. |
-| 466 | Symbol identity | Done | Stable per-analysis identities cover v1 values, functions, record types/fields, builtin types/functions, and references, with HIR identity verification. Module/import/overload identities are excluded by v1 and tracked under 468–470. |
-| 467 | Scope table | Done | [SEMANTICS_V1.md](./SEMANTICS_V1.md) specifies v1 value/function/type namespaces, visibility, shadowing, and block/function lifetime; nested shadowing and HIR scope checks are tested. Module scopes are excluded by v1. |
-| 468 | Module resolver | Done | Public API maps validated dotted module identities to `.indi` paths under configured roots; missing and multi-root ambiguous matches are tested. Source loading and parser integration remain future work. |
-| 469 | Import resolver | Done | Manifest API resolves aliases and public exports, diagnoses duplicate aliases/missing modules, and rejects cycles; source-level import syntax is not part of grammar v1. |
-| 470 | Overload candidate set | Done | Public API selects one exact-type candidate using positional/named argument rules and reports no-match/ambiguity; semantic analyzer and parser integration remain future work. |
-| 471 | Name binding | Done | Every supported v1 variable, function, record, field, and type reference is resolved to an identity; unknown and duplicate references/declarations have stable diagnostics. Ambiguous/inaccessible references cannot occur without the v1-excluded imports/overloads and are tracked under 468–470. |
-| 472 | Type checker | Done | [SEMANTICS_V1.md](./SEMANTICS_V1.md) defines the supported v1 typing rules; semantic and HIR tests cover declarations, expressions, operators, calls, conversions, collections, records, tensors, and stable negative diagnostics. |
-| 473 | Constraint solver | Done | Generic constraint collection and enforcement are implemented and validated with positive and negative tests for Numeric/Integer constraints. |
-| 474 | Type substitution engine | Done | Generic type inference and return-substitution are implemented for parameterized functions and list/range patterns, with constraint checks on inferred types. |
-| 475 | Constant evaluator | Done | v1 integer/Boolean constant forms, short-circuiting, signed overflow, division-by-zero, and the 256-node evaluation budget are specified and tested. || 476 | Control-flow validation | Done | Conditions/counts, return typing, reachable statements, and supported branch/loop behavior are specified and tested; loops are conservatively not assumed to execute. |
-| 477 | Definite return analysis | Done | Nested conditional paths and unreachable statements are tested; the same conservative loop rule is independently enforced by HIR verification. |
-| 478 | Effect checker | Not started | Define the v1 effect model (or explicitly defer it by a scope decision) and validate declared/used effects. |
-| 479 | Ownership checker | Not started | Define ownership, borrowing/lifetimes, and unsafe boundaries (or explicitly defer them); add misuse and valid-flow tests. |
-| 480 | Tensor shape checker | Done | Static rank, numeric element-type, and literal/symbolic dimension equality are tested. v1 explicitly has no tensor operations, broadcasting, or device model, so those compatibility rules do not apply. |
-| 481 | Diagnostic engine | Done | Secondary notes, stable severity/code policy, multiple-error recovery, applied-fix-it validation, and deterministic text/JSON golden tests are implemented. |
-| 482 | JSON diagnostics | Done | [DIAGNOSTICS_V1.md](./DIAGNOSTICS_V1.md) publishes schema v1; golden tests cover every field, locations, notes, fixes, escaping, ordering, and the version envelope. |
-| 483 | Language server index | Done | HIR-backed API indexes symbol definitions, name/call/member references, lexical scopes and byte-offset scope lookup; rebuilding for a new source revision removes stale entries. This is not an LSP server and requires a full HIR rebuild. |
-| 484 | Incremental parse support | Done | Edit ranges, revision-based invalidation, and incremental parsing are implemented and verified against clean re-parses after malformed and repaired edits. |
-| 478 | Effect checker | Done | `effects.cpp` infers and validates IO/allocation/mutation effects, including direct and transitive calls, with diagnostics for unknown/duplicate/undeclared effects. |
-| 479 | Ownership checker | Done | `ownership.cpp` validates move/borrow/borrow_mut semantics, conflicting borrows, use-after-move, and call-site ownership matching. |
+| 445 | Source manager | Implemented/tested | `source.cpp`, `source.hpp`; `source_tests`. Owns source files and assigns IDs. |
+| 446 | Source buffer | Implemented/tested | `SourceManager` owns multiple source buffers; tested for stable access and bounds. |
+| 447 | Source span | Implemented/tested | `SourceLocation`/`SourceSpan` in `source.hpp`; source boundary tests. |
+| 448 | Line table | Implemented/tested | Indexed CR/LF/CRLF mapping in `source.cpp`; `source_tests`. |
+| 449 | Column mapping | Implemented/tested | Byte offsets, UTF-8 scalar columns, and four-column tabs; `source_tests`, `lexer_tests`, `diagnostic_tests`. Terminal display width remains unsupported. |
+| 450 | UTF-8 validator | Implemented/tested | `lexer.cpp`; invalid source encodings in tokens, strings, and comments tested in `lexer_tests`. |
+| 451 | Token kind | Implemented/tested | `TokenKind` and 17 keyword variants in `token.hpp`; token inventory tested in `lexer_tests`. |
+| 452 | Token payload | Implemented/tested | Typed keyword, integer, float, and string payloads in `token.hpp`/`lexer.cpp`; payload/spelling/span cases in `lexer_tests`. |
+| 453 | Lexer state | Implemented/tested | EOF and malformed-token recovery in `lexer.cpp`; focused and parser-robustness tests. |
+| 454 | Trivia preservation | Implemented/tested | Whitespace and line/nested-block comments retain spelling and spans in `lexer.cpp`; `lexer_tests`. |
+| 455 | Parser state | Implemented/tested | Explicit parser cursor and progress guard in `parser.cpp`; `parser_tests`, `parser_robustness_tests`. |
+| 456 | Recursive descent parser | Implemented/tested | `parser.cpp` parses declarations, statements, generic functions, ownership modes, and effects; `grammar_tests`, `parser_tests`. Modules/import syntax and overload declarations are not parsed. |
+| 457 | Pratt expression parser | Implemented/tested | `parser.cpp` precedence table; every binary operator, prefix nesting, calls/index/member tested in `grammar_tests`. |
+| 458 | Grammar version | Implemented/tested | `grammar.hpp` exposes 1.0.0; grammar/spec agreement tested in `grammar_tests`. Package version 0.9.8 is separate. |
+| 459 | AST context | Implemented/tested | `ast.hpp` ownership plus `AST_CONTEXT_V1.md`; parser tests verify AST survives parser/source destruction. |
+| 460 | AST node arena | Implemented/tested | Deliberate `unique_ptr` ownership in `ast.hpp`; `ast_scalability_tests` parses/destroys 10,000 statements. No arena is used. |
+| 461 | AST visitor | Implemented/tested | `ast_visitor.hpp/.cpp`; `ast_visitor_tests` covers each declaration/statement/expression kind. |
+| 462 | AST printer | Implemented/tested | `ast_printer.cpp`; deterministic golden test in `ast_printer_tests`. |
+| 463 | AST serializer | Implemented/tested | `ast_json.cpp` emits schema version 2; structure/schema checks in `parser_tests`, `grammar_tests`, and `cli_ast_json`. |
+| 464 | Syntax recovery | Implemented/tested | Declaration, statement, and delimited-expression recovery in `parser.cpp`; `parser_tests`, `parser_robustness_tests`. |
+| 465 | Error synchronization | Implemented/tested | Synchronization routines in `parser.cpp`, documented in `ERROR_RECOVERY_V1.md`; malformed-input/recovery tests. |
+| 466 | Symbol identity | Implemented/tested | Stable IDs assigned in `sema.cpp` and carried in `hir.cpp`; `sema_tests`, `hir_tests`. |
+| 467 | Scope table | Implemented/tested | Lexical scopes and namespaces in `sema.cpp`; `sema_tests` and independent HIR scope checks in `hir_tests`. |
+| 468 | Module resolver | Implemented/tested API | `resolution.cpp` maps dotted names to `.indi` paths and diagnoses invalid/missing/ambiguous matches; `resolution_tests`. Not wired to source syntax/CLI. |
+| 469 | Import resolver | Implemented/tested API | `ImportResolver` handles aliases, public exports, missing modules, and cycles in `resolution.cpp`; `resolution_tests`. Not wired to source syntax/CLI. |
+| 470 | Overload candidate set | Implemented/tested API | Exact signature and named-argument candidate selection in `resolution.cpp`; `resolution_tests`. Not wired to parser/analyzer calls. |
+| 471 | Name binding | Implemented/tested | `sema.cpp` resolves supported values, functions, records, fields, and types; positive/negative identity checks in `sema_tests`, `hir_tests`. |
+| 472 | Type checker | Implemented/tested | `sema.cpp` plus `hir.cpp`; `sema_tests`, `hir_tests` cover expressions, calls, conversions, records, collections, tensors, and invalid inputs. |
+| 473 | Constraint solver | Implemented/tested | `sema.cpp` infers generic parameters and checks `Numeric`/`Integer`; positive/negative cases in `sema_tests`. |
+| 474 | Type substitution engine | Implemented/tested | `sema.cpp` substitutes inferred generic types in supported patterns/returns; `sema_tests`, `hir_tests`. No explicit call-site type arguments. |
+| 475 | Constant evaluator | Implemented/tested | `const_eval.cpp`; `sema_tests` cover short-circuiting, overflow, division by zero, and the 256-node limit. |
+| 476 | Control-flow validation | Implemented/tested | `sema.cpp` checks conditions, counts, reachability and return typing; `sema_tests`, `hir_tests`. Loops are conservatively not assumed to execute. |
+| 477 | Definite return analysis | Implemented/tested | `sema.cpp` and independent `hir.cpp` validation; nested branches, unreachable statements, and loop paths tested. |
+| 478 | Effect checker | Implemented/tested | `effects.cpp` infers `io`, `allocation`, `mutation` and transitive calls; annotation errors tested in `sema_tests`, summaries checked in `hir_tests`. |
+| 479 | Ownership checker | Implemented/tested | `ownership.cpp` checks mode matching, moves, use-after-move, and call-scoped borrow conflicts; positive/negative cases in `sema_tests`, metadata in `hir_tests`. Not a lifetime/escape checker. |
+| 480 | Tensor shape checker | Implemented/tested | Exact element/rank/dimension checks in `sema.cpp`/`hir.cpp`; tensor tests in `sema_tests`, `hir_tests`, and CLI example. No tensor operations/device rules. |
+| 481 | Diagnostic engine | Implemented/tested | `diagnostic.cpp`; `diagnostic_tests` cover text, notes, fix-its, escaping, order, and locations. |
+| 482 | JSON diagnostics | Implemented/tested | `diagnostic.cpp` emits schema version 1; golden and CLI checks in `diagnostic_tests`, `cli_json_diagnostics`, `cli_json_parser_fixit`. |
+| 483 | Language server index | Implemented/tested API | `symbol_index.cpp` indexes HIR symbols, references, scopes, and revisions; `symbol_index_tests`. It is not an LSP server and requires HIR snapshots. |
+| 484 | Incremental parse support | Implemented/tested | `incremental_parser.cpp` reuses unchanged top-level fragments across edits; `incremental_parser_tests` compare edits/recovery with clean parses. |
 
-## Work packages and acceptance gates
+## Remaining work and next milestones
 
-Implement these in dependency order. A work package is accepted only when its specification, implementation, focused positive/negative tests, and user-facing documentation agree.
+The 40 catalogue entries are implemented and focused-tested at their defined
+scope. The following work is outside that completed item count and is why the
+weighted front-end readiness estimate is still 97.25%:
 
-### A. Freeze the front-end v1 contract
+1. **Language integration:** decide whether module/import and overload syntax
+   should enter a future grammar version, then connect the existing resolver
+   APIs to source loading, semantic analysis, HIR identities, and CLI workflows.
+   The current grammar remains single-file; the resolver APIs are directly
+   callable library features.
+2. **Editor tooling:** evolve the HIR symbol/reference index API into an editor
+   or language-server integration if required. The current index is not an LSP
+   and is rebuilt from HIR snapshots.
+3. **Conformance and robustness:** expand requirement-linked tests beyond the
+   focused suite; add coverage-guided lexer/parser fuzzing and sanitizer gates.
+4. **Release readiness:** add reproducible offline CI/release jobs, a
+   compatibility policy for package and JSON formats, and broader supported-
+   compiler/platform checks.
+5. **Language/backend scope:** document additional language/runtime semantics
+   before adding them. LLVM IR, machine-code generation, execution, tensor
+   operations, and device backends are not part of this package.
 
-- Document grammar, tokenization, types, integer/float literal rules, conversions, visibility, modules/imports, generics/overloads, tensor checks, ownership/effects, and error behavior.
-- For each feature decide: v1 required, explicitly deferred, or out of scope. Do not silently call an undefined feature “complete”.
-- Link each normative rule to at least one valid and one invalid test where applicable.
+## What “40/40” and “97.25%” mean
 
-### B. Finish source, lexer, parser, and AST infrastructure
+The 40/40 result is a catalogue item count backed by implementations and
+focused tests; it includes standalone resolver and HIR-index APIs whose
+integration boundaries are stated above. The 97.25% figure is a separate,
+judgment-based weighted readiness estimate that includes broader conformance
+and release acceptance. Neither result means the full language or complete
+compiler is finished. This package is a pre-release compiler front end, not a
+machine-code compiler or runtime.
 
-- Complete token payloads/trivia and the documented numeric/string/identifier rules.
-- Implement the full accepted grammar and precedence/associativity table.
-- Complete parser recovery and error synchronization without crashes or loss of later valid declarations.
-- Complete AST ownership, visitors, deterministic printing, serialization tests, and schema/version policy.
+## Verification
 
-### C. Finish resolution and semantics
-
-- Implement namespaces, visibility, and stable identities across all syntax accepted by v1. Module/import and overload resolver APIs are available; connect them if multi-file syntax is adopted.
-- Implement the accepted generic/type-constraint rules or record a scope decision that defers them. The overload candidate-selection API exists; language integration is future work.
-- Complete constant evaluation, conversions, control-flow/return, ownership/effect, and tensor static checks that remain in v1.
-- Keep error codes stable and verify diagnostics at exact source spans.
-
-### D. Finish typed HIR
-
-- Lower every accepted v1 construct while preserving resolved identities, types, source spans, and relevant semantic metadata.
-- Independently verify all HIR invariants, including symbols, types, control flow, and calls.
-- Test AST-to-HIR coverage and JSON round trips/schema compatibility; reject malformed HIR with explicit diagnostics.
-
-### E. Finish tooling and release acceptance
-
-- Complete JSON diagnostic schema and fix-it behavior; symbol/reference, module/import/overload resolver APIs, generic constraints/substitution, effect checking, ownership checking, and incremental parsing are all part of the accepted v1 scope for this front-end checkpoint.
-- Add a requirement-linked conformance suite for every v1 grammar/type/diagnostic rule.
-- Add coverage-guided lexer/parser fuzzing, sanitizer jobs, clean offline builds, CI, and installed-package consumer checks.
-- Ensure all examples and docs match behavior; run all tests from a fresh Release build.
-
-## Definition of front-end completion
-
-Report **100% for the agreed v1 front-end scope only** after all of the following are true:
-
-1. The v1 contract is versioned and every required feature in the table has an accepted implementation; any catalogue item outside v1 has an explicit scope decision and remains visibly tracked as future work.
-2. Every requirement maps to passing tests, including malformed input, diagnostics, recovery, and typed HIR invariants.
-3. Full v1 conformance, fuzz, sanitizer, clean-build, and package-consumer checks pass in CI.
-4. No known required v1 item remains partial or unimplemented; documentation and acceptance evidence are current.
-
-The current 19-test suite passing is evidence for its tested cases, not by itself proof of 100% language or production readiness. LLVM, machine-code generation, runtime execution, and AI/device backends remain outside this plan.
+The current acceptance suite contains **23 CTest cases**. A fresh Release
+configure/build and all 23 tests pass. The suite covers source mapping,
+lexing/trivia, parser/AST/grammar, semantic analysis and HIR verification,
+diagnostics, symbol indexing, module/import/overload APIs, incremental parsing,
+CLI output and installed-package consumption. Passing tests establish the
+covered behaviors, not exhaustive language conformance.
