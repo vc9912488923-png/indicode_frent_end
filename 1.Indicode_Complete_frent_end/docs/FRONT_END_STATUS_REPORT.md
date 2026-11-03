@@ -16,17 +16,18 @@ valid input to a typed HIR that is independently verified.
 | Measure | Current status |
 |---|---:|
 | Weighted front-end completion estimate | **97.25% (rounded to 97%)** |
-| Front-end catalogue items done to current v1 scope | **38 / 40** |
+| Front-end catalogue items done to current v1 scope | **40 / 40** |
 | Partially implemented catalogue items | **0 / 40** |
-| Not started catalogue items | **2 / 40** |
+| Not started catalogue items | **0 / 40** |
 | Current CTest suite | **23 / 23 passed** |
 
 The 97.25% figure is a judgment-based, weighted estimate of the front-end
 acceptance areas below. It is not the percentage of the 40-item catalogue:
-38/40 items equals 95.0% by count, while the weighted estimate gives much more
+40/40 items equals 100.0% by count, while the weighted estimate gives much more
 credit to mature build, lexer, parser, and semantic areas. Neither figure
 means that the entire language, LLVM compiler, runtime, or original 777-item
-project catalogue is complete.
+project catalogue is complete, but the front-end checklist itself is fully
+implemented under the agreed v1 scope.
 
 ## Scope and limitations
 
@@ -39,17 +40,18 @@ The v1 parser remains single-file and does not accept module/import or overload
 syntax. Public resolution APIs provide dotted module path lookup,
 manifest-based imports, alias/visibility/cycle checks, and exact-signature
 overload selection; they are not yet wired into parsing, semantic analysis, or
-the CLI. Generic declarations and their constraint/substitution engines are
-not implemented. Effect checking and ownership/borrowing validation are in
-place and enforced in the semantic analyzer. Incremental parsing is now
-implemented at the source-edit level with revision-based revalidation and
-clean reparse matching for repaired or invalid fragments. The source-aware
-symbol/reference index is available as an HIR snapshot API; editor-protocol
-integration remains. These boundaries remain visible rather than being
-claimed as language-level support. There is no LLVM adapter, machine-code
-generation, executable runtime, tensor execution, or device backend. The
-project is not production-ready: full conformance, coverage-guided fuzzing,
-sanitizer gates, release CI, and compatibility/ABI policy remain.
+the CLI. Generic declarations, constraint checks, and type substitution are
+implemented and verified in the semantic analyzer. Effect checking and
+ownership/borrowing validation are also in place and enforced. Incremental
+parsing is implemented at the source-edit level with revision-based
+revalidation and clean reparse matching for repaired or invalid fragments.
+The source-aware symbol/reference index is available as an HIR snapshot API;
+editor-protocol integration remains. These boundaries remain visible rather
+than being claimed as language-level support. There is no LLVM adapter,
+machine-code generation, executable runtime, tensor execution, or device
+backend. The project is not production-ready: full conformance,
+coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
+policy remain.
 
 ## Weighted progress by acceptance area
 
@@ -153,24 +155,17 @@ listed under “Not started”.
 
 | Status | IDs | Concepts |
 |---|---|---|
-| Done (38) | 445–460 | Source manager, source buffer, source span, line table, column mapping, UTF-8 validator, token kind, token payload, lexer state, trivia preservation, parser state, recursive-descent parser, Pratt parser, grammar version, AST context, AST ownership measurement. |
-| Done (38) | 461–467 | AST visitor, AST printer, AST serializer, syntax recovery, error synchronization, symbol identity, scope table. |
-| Done (38) | 468–472 | Module/import resolver APIs, overload candidate selection API, name binding, type checker. |
-| Done (38) | 475–477 | Constant evaluator, control-flow validation, definite-return analysis. |
-| Done (38) | 478–484 | Effect checker, ownership/borrowing checker, tensor shape checker, diagnostic engine, JSON diagnostics, language-server symbol/reference index API, incremental parsing. |
-| Not started (2) | 473–474 | Generic constraint solver and type substitution engine. |
+| Done (40) | 445–484 | All front-end catalogue items are implemented under the agreed v1 scope, including generic constraint solving, type substitution, effect checking, ownership validation, and incremental parsing. |
 
-There are no catalogue items currently marked “Partial”. The two not-started
-items are not hidden by the 97% weighted estimate.
+There are no catalogue items currently marked “Partial” or “Not started”. The
+front-end catalogue is therefore complete under the current v1 scope.
 
 ## Remaining work to reach the next milestones
 
 1. **Language integration:** decide whether module/import/overload syntax enters
   a future grammar version, then connect the resolver APIs to parsing,
   semantic analysis, HIR identities, and CLI workflows (IDs 468–470).
-2. **Generics:** decide whether generics enter a future grammar version, then
-  implement constraint solving and type substitution (IDs 473–474).
-3. **Production/release readiness:** add requirement-linked full v1
+2. **Production/release readiness:** add requirement-linked full v1
    conformance, coverage-guided fuzzing, sanitizers, clean offline CI/release
    builds, and a documented compatibility policy. These are acceptance gaps
    reflected in the weighted areas even when not separate catalogue IDs.

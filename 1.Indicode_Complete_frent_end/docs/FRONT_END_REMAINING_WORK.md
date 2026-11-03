@@ -15,11 +15,11 @@ The old PDF described a 777-concept catalogue across the whole language/compiler
 
 | Front-end catalogue status | Count |
 |---|---:|
-| Implemented to the v1 scoped acceptance level | 38 |
+| Implemented to the v1 scoped acceptance level | 40 |
 | Partially implemented; more acceptance work remains | 0 |
-| Not implemented yet | 2 |
+| Not implemented yet | 0 |
 | **Front-end catalogue total** | **40** |
-| **Still unfinished (partial + not implemented)** | **2** |
+| **Still unfinished (partial + not implemented)** | **0** |
 
 These inventory counts and the 97.25% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
 
@@ -57,10 +57,9 @@ These inventory counts and the 97.25% weighted estimate measure different things
 | 470 | Overload candidate set | Done | Public API selects one exact-type candidate using positional/named argument rules and reports no-match/ambiguity; semantic analyzer and parser integration remain future work. |
 | 471 | Name binding | Done | Every supported v1 variable, function, record, field, and type reference is resolved to an identity; unknown and duplicate references/declarations have stable diagnostics. Ambiguous/inaccessible references cannot occur without the v1-excluded imports/overloads and are tracked under 468–470. |
 | 472 | Type checker | Done | [SEMANTICS_V1.md](./SEMANTICS_V1.md) defines the supported v1 typing rules; semantic and HIR tests cover declarations, expressions, operators, calls, conversions, collections, records, tensors, and stable negative diagnostics. |
-| 473 | Constraint solver | Not started | If generics/constraints are in v1, implement constraint collection/solving and inconsistent/unsatisfied-constraint tests. |
-| 474 | Type substitution engine | Not started | If generics are in v1, implement substitution, occurs/consistency checks as required, and nested-generic tests. |
-| 475 | Constant evaluator | Done | v1 integer/Boolean constant forms, short-circuiting, signed overflow, division-by-zero, and the 256-node evaluation budget are specified and tested. |
-| 476 | Control-flow validation | Done | Conditions/counts, return typing, reachable statements, and supported branch/loop behavior are specified and tested; loops are conservatively not assumed to execute. |
+| 473 | Constraint solver | Done | Generic constraint collection and enforcement are implemented and validated with positive and negative tests for Numeric/Integer constraints. |
+| 474 | Type substitution engine | Done | Generic type inference and return-substitution are implemented for parameterized functions and list/range patterns, with constraint checks on inferred types. |
+| 475 | Constant evaluator | Done | v1 integer/Boolean constant forms, short-circuiting, signed overflow, division-by-zero, and the 256-node evaluation budget are specified and tested. || 476 | Control-flow validation | Done | Conditions/counts, return typing, reachable statements, and supported branch/loop behavior are specified and tested; loops are conservatively not assumed to execute. |
 | 477 | Definite return analysis | Done | Nested conditional paths and unreachable statements are tested; the same conservative loop rule is independently enforced by HIR verification. |
 | 478 | Effect checker | Not started | Define the v1 effect model (or explicitly defer it by a scope decision) and validate declared/used effects. |
 | 479 | Ownership checker | Not started | Define ownership, borrowing/lifetimes, and unsafe boundaries (or explicitly defer them); add misuse and valid-flow tests. |
@@ -104,7 +103,7 @@ Implement these in dependency order. A work package is accepted only when its sp
 
 ### E. Finish tooling and release acceptance
 
-- Complete JSON diagnostic schema and fix-it behavior; symbol/reference, module/import/overload resolver APIs, effect checking, ownership checking, and incremental parsing are all part of the accepted v1 scope for this front-end checkpoint.
+- Complete JSON diagnostic schema and fix-it behavior; symbol/reference, module/import/overload resolver APIs, generic constraints/substitution, effect checking, ownership checking, and incremental parsing are all part of the accepted v1 scope for this front-end checkpoint.
 - Add a requirement-linked conformance suite for every v1 grammar/type/diagnostic rule.
 - Add coverage-guided lexer/parser fuzzing, sanitizer jobs, clean offline builds, CI, and installed-package consumer checks.
 - Ensure all examples and docs match behavior; run all tests from a fresh Release build.
