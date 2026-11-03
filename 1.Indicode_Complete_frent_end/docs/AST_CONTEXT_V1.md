@@ -18,3 +18,11 @@ reconstruct source text.
 The current AST intentionally uses ordinary C++ ownership rather than a node
 arena; callers can move `Program`/`ParseResult`, but AST values are
 non-copyable where they contain `unique_ptr`.
+
+The ownership alternative was measured with a generated function containing
+10,000 statements. In one local GCC 13.3 default-build run, parsing took 27 ms
+and AST destruction took 2 ms. The CTest acceptance checks that every statement
+is retained and the AST is destroyed successfully; it deliberately has no
+timing threshold. These machine-specific measurements do not justify adding an
+arena for the current workload. Re-measure with representative production
+inputs before changing the ownership model.

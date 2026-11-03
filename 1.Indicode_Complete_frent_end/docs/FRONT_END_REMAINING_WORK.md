@@ -9,19 +9,19 @@ For the consolidated progress, completed-work summary, percentage breakdown, and
 
 The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. It does not generate LLVM IR, machine code, executables, or run programs.
 
-The current progress report calculates a **97.10% weighted estimate**, displayed as **97%**. The estimated gap is **2.90 percentage points** on that judgment-based scale. This is not a claim that 97% of the language specification or 97% of the PDF catalogue is implemented.
+The current progress report calculates a **97.15% weighted estimate**, displayed as **97%**. The estimated gap is **2.85 percentage points** on that judgment-based scale. This is not a claim that 97% of the language specification or 97% of the PDF catalogue is implemented.
 
 The old PDF described a 777-concept catalogue across the whole language/compiler project. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
 
 | Front-end catalogue status | Count |
 |---|---:|
-| Implemented to the v1 scoped acceptance level | 30 |
+| Implemented to the v1 scoped acceptance level | 32 |
 | Partially implemented; more acceptance work remains | 0 |
-| Not implemented yet | 10 |
+| Not implemented yet | 8 |
 | **Front-end catalogue total** | **40** |
-| **Still unfinished (partial + not implemented)** | **10** |
+| **Still unfinished (partial + not implemented)** | **8** |
 
-These inventory counts and the 97.10% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
+These inventory counts and the 97.15% weighted estimate measure different things. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
 
 ## Remaining catalogue entries
 
@@ -44,7 +44,7 @@ These inventory counts and the 97.10% weighted estimate measure different things
 | 457 | Pratt expression parser | Done | Normative precedence/associativity and postfix rules have coverage for every binary operator, prefix nesting, and member/index binding. |
 | 458 | Grammar version | Done | Public grammar version 1.0.0 matches the normative syntax specification; syntax contract and compatibility policy are documented and checked. |
 | 459 | AST context | Done | [AST_CONTEXT_V1.md](./AST_CONTEXT_V1.md) specifies that `Program` owns the AST, parser tokens are borrowed only during parsing, and source text must be retained separately to render spans. A returned program is tested after parser/source destruction. |
-| 460 | AST node arena | Not started | Use an arena or document/measure an alternative ownership design; test destruction and large-input behavior. |
+| 460 | AST node arena | Done | Retain documented `unique_ptr` ownership: a 10,000-statement AST parses and destroys successfully. A local GCC 13.3 default-build run measured 27 ms parse and 2 ms destruction; timings are informational, and no arena was justified by this small benchmark. |
 | 461 | AST visitor | Done | Public `AstVisitor` has required callbacks for every declaration, statement kind, and expression kind; `walk_ast` traverses the full tree and tests assert complete kind coverage. |
 | 462 | AST printer | Done | Deterministic golden output covers every v1 declaration, statement, expression kind, prefix operator, and binary operator. |
 | 463 | AST serializer | Done | AST JSON schema version 1 serializes declarations, node kinds, names, arguments, and source spans; structure, escaping, and schema-version output are tested. Cross-version compatibility guarantees remain part of broader release policy. |
@@ -67,7 +67,7 @@ These inventory counts and the 97.10% weighted estimate measure different things
 | 480 | Tensor shape checker | Done | Static rank, numeric element-type, and literal/symbolic dimension equality are tested. v1 explicitly has no tensor operations, broadcasting, or device model, so those compatibility rules do not apply. |
 | 481 | Diagnostic engine | Done | Secondary notes, stable severity/code policy, multiple-error recovery, applied-fix-it validation, and deterministic text/JSON golden tests are implemented. |
 | 482 | JSON diagnostics | Done | [DIAGNOSTICS_V1.md](./DIAGNOSTICS_V1.md) publishes schema v1; golden tests cover every field, locations, notes, fixes, escaping, ordering, and the version envelope. |
-| 483 | Language server index | Not started | Build a source-aware symbol/reference index API and test definitions, references, scopes, and invalidation. |
+| 483 | Language server index | Done | HIR-backed API indexes symbol definitions, name/call/member references, lexical scopes and byte-offset scope lookup; rebuilding for a new source revision removes stale entries. This is not an LSP server and requires a full HIR rebuild. |
 | 484 | Incremental parse support | Not started | Define edit ranges/cache invalidation, implement incremental parsing, and prove results match clean full parses. |
 
 ## Work packages and acceptance gates
@@ -102,7 +102,7 @@ Implement these in dependency order. A work package is accepted only when its sp
 
 ### E. Finish tooling and release acceptance
 
-- Complete JSON diagnostic schema, fix-it behavior, symbol index, and incremental parse support if retained in v1 scope.
+- Complete JSON diagnostic schema, fix-it behavior, and incremental parse support if retained in v1 scope; the HIR symbol/reference index API is implemented.
 - Add a requirement-linked conformance suite for every v1 grammar/type/diagnostic rule.
 - Add coverage-guided lexer/parser fuzzing, sanitizer jobs, clean offline builds, CI, and installed-package consumer checks.
 - Ensure all examples and docs match behavior; run all tests from a fresh Release build.

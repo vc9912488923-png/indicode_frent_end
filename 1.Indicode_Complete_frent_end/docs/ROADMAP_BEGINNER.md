@@ -8,7 +8,7 @@ We are building the part of a compiler that reads Indicode source code and check
 
 LLVM is a large, separate compiler framework. This project does **not** download, copy, or build LLVM. Our front end and its tests must keep working without LLVM. Connecting an optional backend is a later project stage, after the front end has a stable typed representation.
 
-The [front-end status report](./FRONT_END_STATUS_REPORT.md) and its [summary PDF](../Compiler_Front_End_Status_Report.pdf) summarize completed and remaining work; the [detailed 40-item audit PDF](../Compiler_Front_End_Remaining_Work.pdf) lists each catalogue item. The previous all-area blueprint's 777 concepts were not 777 front-end requirements; the front-end section contains 40 catalogue entries. The editable audit now has 30 implemented to v1 scope, 0 partial, and 10 not started. See the [versioned grammar specification](LANGUAGE_SPEC_V1.md), [semantic rules](SEMANTICS_V1.md), and [AST ownership contract](AST_CONTEXT_V1.md).
+The [front-end status report](./FRONT_END_STATUS_REPORT.md) and its [summary PDF](../Compiler_Front_End_Status_Report.pdf) summarize completed and remaining work; the [detailed 40-item audit PDF](../Compiler_Front_End_Remaining_Work.pdf) lists each catalogue item. The previous all-area blueprint's 777 concepts were not 777 front-end requirements; the front-end section contains 40 catalogue entries. The editable audit now has 32 implemented to v1 scope, 0 partial, and 8 not started. See the [versioned grammar specification](LANGUAGE_SPEC_V1.md), [semantic rules](SEMANTICS_V1.md), and [AST ownership contract](AST_CONTEXT_V1.md).
 
 ## Current Overall Progress: 97%
 
@@ -32,7 +32,8 @@ The estimate uses the weighted acceptance areas in `PROGRESS.md`:
 - Bounded constant evaluation, conservative control-flow/return checks, and exact static tensor-shape rules are specified and tested.
 - Diagnostic schema v1 covers locations, notes, fixes, escaping, and deterministic full-output golden behavior.
 - The AST now has an exhaustive kind-specific visitor and a documented owner/lifetime contract (see `AST_CONTEXT_V1.md`).
-- Updated weighted estimate: **97.10%, rounded to 97%** (see `PROGRESS.md` and the [front-end status report](./FRONT_END_STATUS_REPORT.md)).
+- The HIR now has a symbol/reference index API with lexical scopes and revision-based rebuild invalidation; incremental parsing is still separate future work.
+- Updated weighted estimate: **97.15%, rounded to 97%** (see `PROGRESS.md` and the [front-end status report](./FRONT_END_STATUS_REPORT.md)).
 
 This is an estimate, not a marketing score. It may go down if a review finds missing acceptance behavior. Passing tests prove only the tested cases, not completeness of the language.
 
