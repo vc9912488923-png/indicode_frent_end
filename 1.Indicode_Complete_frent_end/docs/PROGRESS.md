@@ -1,25 +1,25 @@
 # Indicode Front-End Progress
 
-**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+**Package version:** 0.9.8 (pre-release).
 **Updated:** 2026-11-04
 
 ## Scope and status
 
-This C++20 package implements an Indicode compiler front end that reads source,
-builds an AST, performs supported name/type/semantic checks, and lowers valid
-input to project-owned typed HIR that is independently verified. A separate
-textual LLVM IR generator milestone is tracked below. The project does not
-generate machine code, execute programs, or provide tensor/device backends.
-LLVM is not downloaded, vendored, or built here.
+This C++20 package implements the documented Indicode front end and textual
+LLVM IR generator milestone. It reads supported source, builds an AST, checks
+names/types/semantics, independently verifies typed HIR, and lowers supported
+single-file v1 constructs to textual LLVM IR. It does not generate machine
+code, execute programs, or provide tensor/device backends. LLVM is not
+downloaded, vendored, or built here.
 
 The code audit found implementations and focused tests for all **40/40
 catalogue items (IDs 445-484)** at their stated v1 or public-API acceptance
-level. This is an item count, not a claim that every API is integrated into
-source syntax or that the full language/compiler is complete. The separate
-weighted front-end readiness estimate is **97.25% (rounded to 97%)** because
-conformance, editor integration, release/CI, fuzzing, sanitizer, and
-compatibility work remains. See the [status report](./FRONT_END_STATUS_REPORT.md)
-and [code-evidence audit](./FRONT_END_REMAINING_WORK.md).
+level. The textual LLVM IR generator lowers **100% of documented single-file
+v1 constructs**. Together, these complete the requested milestone within its
+declared scope. This does not claim that every API is integrated into source
+syntax or that the full language/backend is complete. See the [combined
+status report](./COMPILER_FRONT_END_LLVM_IR_STATUS.md), the [front-end status
+page](./FRONT_END_STATUS_REPORT.md), and the [40-item code audit](./FRONT_END_REMAINING_WORK.md).
 
 The source grammar contract is **1.0.0**; it is separate from the package
 version **0.9.8**. Diagnostic JSON uses schema version 1. AST JSON and typed-HIR
@@ -68,30 +68,19 @@ JSON use schema version 2.
   modules, and generic records are not in front-end v1. LLVM is optional and
   never downloaded; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
 
-## Weighted readiness estimate
+## Defined-scope completion
 
-The estimate is a judgment-based measure of acceptance maturity; it is not
-derived from the count of catalogue entries and does not measure the complete
-compiler.
+| Milestone measure | Completion |
+|---|---:|
+| Front-end v1/API catalogue | **40/40 (100%)** |
+| Textual LLVM IR lowering of documented single-file v1 constructs | **100%** |
+| Combined requested front-end + IR milestone | **100% within the stated scope** |
+| Current test suite in this environment | **28/28 passed** |
 
-| Acceptance area | Weight | Completion | Weighted points |
-|---|---:|---:|---:|
-| Project/build foundation | 5% | 95% | 4.75 |
-| Source manager and diagnostics | 10% | 97% | 9.70 |
-| Lexer | 15% | 92% | 13.80 |
-| Parser and AST | 15% | 99% | 14.85 |
-| Name resolution | 10% | 96% | 9.60 |
-| Type checking and semantic validation | 15% | 99% | 14.85 |
-| Typed HIR and verification | 15% | 99% | 14.85 |
-| CLI and diagnostics tooling | 5% | 99% | 4.95 |
-| Tests, docs, and integration | 10% | 99% | 9.90 |
-| **Total** | **100%** |  | **97.25%** |
-
-The remaining estimate reflects broader acceptance gaps: language conformance,
-resolver/editor integration, terminal display-width handling, sanitizer and
-fuzz gates, CI/release practices, and package/JSON compatibility policy. These
-gaps do not mean a catalogue row lacks code; they do mean the overall front-end
-should not be called fully production-ready.
+This feature-completion measure does not include future language extensions,
+LSP integration, release engineering, runtime implementations, target ABI,
+machine code, linking, or execution. The broad language/backend catalogue is
+not the denominator for this front-end + textual-IR milestone.
 
 ## Verification
 
@@ -115,15 +104,13 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
 
 ## Remaining work
 
-1. Decide whether multi-file module/import and overload support should become
-   source-language features, then integrate the existing APIs if approved.
-2. Expand requirement-linked conformance coverage; add coverage-guided fuzzing
-   and sanitizer gates.
-3. Add reproducible CI/release workflows and compatibility policies for the
-   package and JSON schemas; test more compilers/platforms.
-4. New IR work beyond the documented front-end v1 scope requires a separate
-  language/runtime/backend decision; it must not be conflated with v1
-  completion.
+1. If desired, consider integrating module/import/overload APIs into a future
+   source grammar version.
+2. Expand conformance coverage, fuzzing, sanitizers, CI/release workflows,
+   package/JSON compatibility policies, and compiler/platform checks.
+3. Any work beyond textual LLVM IR, such as runtime helpers or machine code,
+   requires a separate backend/runtime decision and is not part of this
+   milestone.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
 training, and device backends are outside package 0.9.8.

@@ -1,5 +1,10 @@
 # LLVM IR Generator v0
 
+This generator is part of the completed front-end + textual-IR milestone.
+See the [consolidated status report](./COMPILER_FRONT_END_LLVM_IR_STATUS.md)
+and its [single PDF](../Compiler_Front_End_and_LLVM_IR_Status.pdf) for the
+combined completion and verification summary.
+
 The generator consumes independently verified, project-owned HIR and emits
 textual LLVM IR. It does not download, build, or link LLVM libraries, invoke
 LLVM during normal compilation, produce machine code, provide a runtime, link

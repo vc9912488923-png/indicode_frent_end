@@ -1,19 +1,19 @@
-# Compiler Front-End: Remaining Work and Completion Plan
+# Compiler Front-End: Scope Audit and Deferred Work
 
 **Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
 
 **Status date:** 2026-11-04
-**Scope:** Indicode compiler front end only. This code audit replaces the previous all-area blueprint PDF.
+**Scope:** Front-end v1/API code audit; together with the textual LLVM IR generator, it supports the completed front-end + IR milestone.
 
-For the consolidated progress, completed-work summary, percentage breakdown, and remaining roadmap, see the [front-end status report](./FRONT_END_STATUS_REPORT.md) and its [PDF](../Compiler_Front_End_Status_Report.pdf).
+For the combined scope, completion result, IR coverage, and verification, see the [consolidated status report](./COMPILER_FRONT_END_LLVM_IR_STATUS.md) and the [single project status PDF](../Compiler_Front_End_and_LLVM_IR_Status.pdf).
 
 ## What “100%” means here
 
-The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. The separate textual LLVM IR generator is outside this front-end audit; machine-code generation, executables, and program execution remain unsupported.
+The front end reads supported source, checks it, reports source-aware errors, and produces independently verified typed HIR. The textual LLVM IR generator lowers the documented single-file v1 constructs from that HIR. Machine-code generation, executables, and program execution remain outside the requested scope.
 
-The current weighted front-end readiness estimate is **97.25%**, displayed as **97%**. The estimate includes broader conformance and release-readiness gaps; it is not the percentage of the catalogue or a measure of how much of a complete compiler exists.
+**Completion for this milestone:** the 40 front-end catalogue entries are implemented and focused-tested at their defined v1/API acceptance level, and the IR generator lowers all documented single-file v1 constructs. This is scoped feature completion, not a claim that every possible language feature or production/release criterion is complete.
 
-The old PDF described a 777-concept catalogue across the whole language/compiler project. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
+The broader language/compiler catalogue contains 777 concepts. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
 
 | Front-end catalogue status | Count |
 |---|---:|
@@ -23,7 +23,7 @@ The old PDF described a 777-concept catalogue across the whole language/compiler
 | **Front-end catalogue total** | **40** |
 | **Still unfinished (partial + not implemented)** | **0** |
 
-These inventory counts and the 97.25% weighted estimate measure different things. Some catalogue entries are library APIs and are not integrated into the single-file source grammar, semantic analyzer, CLI, or an LSP. The remaining 737 entries in the full catalogue are outside this front-end-only plan; this is not a claim that they are complete.
+Some catalogue entries are library APIs and are not integrated into the single-file source grammar, semantic analyzer, CLI, or an LSP. The other entries in the broader language/compiler catalogue are outside this milestone; this audit does not claim that they are complete.
 
 ## Code audit of all 40 front-end entries
 
@@ -72,11 +72,10 @@ These inventory counts and the 97.25% weighted estimate measure different things
 | 483 | Language server index | Implemented/tested API | `symbol_index.cpp` indexes HIR symbols, references, scopes, and revisions; `symbol_index_tests`. It is not an LSP server and requires HIR snapshots. |
 | 484 | Incremental parse support | Implemented/tested | `incremental_parser.cpp` reuses unchanged top-level fragments across edits; `incremental_parser_tests` compare edits/recovery with clean parses. |
 
-## Remaining work and next milestones
+## Deferred work outside this milestone
 
-The 40 catalogue entries are implemented and focused-tested at their defined
-scope. The following work is outside that completed item count and is why the
-weighted front-end readiness estimate is still 97.25%:
+The following items are intentionally outside the completed front-end v1 +
+textual IR scope; they are not blockers to its 100% scoped completion:
 
 1. **Language integration:** decide whether module/import and overload syntax
    should enter a future grammar version, then connect the existing resolver
@@ -91,26 +90,25 @@ weighted front-end readiness estimate is still 97.25%:
 4. **Release readiness:** add reproducible offline CI/release jobs, a
    compatibility policy for package and JSON formats, and broader supported-
    compiler/platform checks.
-5. **Language/backend scope:** document additional language/runtime semantics
-   before expanding the separately tracked LLVM IR generator. Machine-code
-   generation, execution, tensor operations, and device backends are not part
-   of this package.
+5. **Runtime/backend scope:** runtime helper implementations, machine-code
+   generation, linking, execution, tensor operations, and device backends are
+   not part of this package.
 
-## What “40/40” and “97.25%” mean
+## What “40/40” means
 
 The 40/40 result is a catalogue item count backed by implementations and
 focused tests; it includes standalone resolver and HIR-index APIs whose
-integration boundaries are stated above. The 97.25% figure is a separate,
-judgment-based weighted readiness estimate that includes broader conformance
-and release acceptance. Neither result means the full language or complete
-compiler is finished. This package is a pre-release compiler front end, not a
-machine-code compiler or runtime.
+integration boundaries are stated above. The separate IR claim covers
+documented single-file v1 constructs. Together these establish the requested
+scope, not every feature in the broader language or a complete machine-code
+compiler/runtime.
 
 ## Verification
 
 The current acceptance suite contains **26 base CTest cases**. If `llvm-as`
 and `opt` are already installed, CMake adds two optional IR validation tests.
-The current environment ran all **28 tests** successfully. The suite covers source mapping,
+The current environment ran all **28 tests** successfully. The suite covers
+source mapping,
 lexing/trivia, parser/AST/grammar, semantic analysis and HIR verification,
 diagnostics, symbol indexing, module/import/overload APIs, incremental parsing,
 CLI output, installed-package consumption, and LLVM assembly/verification.

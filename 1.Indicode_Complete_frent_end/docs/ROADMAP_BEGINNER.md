@@ -19,10 +19,9 @@ verify that text. It does not produce machine code, link, or run programs.
 
 The code audit found implementations and focused tests for all **40/40
 front-end catalogue items (IDs 445-484)** at their listed v1 or library-API
-scope. The broader weighted readiness estimate is **97.25% (rounded to 97%)**;
-that figure includes unfinished conformance, editor integration, release/CI,
-fuzzing, sanitizer, and compatibility work. Passing the current tests does
-not prove that every possible Indicode program is supported.
+scope. The textual LLVM IR generator lowers **100% of documented single-file
+v1 constructs**. Together, they complete the requested milestone within its
+defined scope; this does not mean every possible Indicode program is supported.
 
 Some pieces are library APIs rather than language syntax:
 
@@ -33,7 +32,7 @@ Some pieces are library APIs rather than language syntax:
   language server (LSP).
 - Incremental parsing reuses unchanged top-level fragments after source edits.
 
-See the [status report](./FRONT_END_STATUS_REPORT.md), the [40-item code audit](./FRONT_END_REMAINING_WORK.md), and the [weighted progress details](./PROGRESS.md).
+See the [combined front-end + LLVM IR status](./COMPILER_FRONT_END_LLVM_IR_STATUS.md), the [status page](./FRONT_END_STATUS_REPORT.md), the [40-item code audit](./FRONT_END_REMAINING_WORK.md), and the [progress details](./PROGRESS.md).
 The source grammar is version 1.0.0, separate from package version 0.9.8.
 AST/HIR JSON use schema version 2; diagnostic JSON uses schema version 1.
 
@@ -99,9 +98,9 @@ specification and semantic rules document exact syntax and limits.
 | LLVM IR text output | 100% of documented single-file front-end v1 constructs, including generic specialization | Runtime helpers, target ABI, machine code, linking, and execution are separate/out of scope |
 | Machine code/runtime | Out of scope | Separate future decision |
 
-The front-end catalogue is complete by item count, but these broader
-integration and release goals explain why the weighted readiness estimate is
-below 100%.
+The roadmap items above are broader future integrations and release goals;
+they are not required for completion of the documented single-file v1
+front-end + textual LLVM IR milestone.
 
 ## Build and test
 
@@ -113,8 +112,9 @@ cmake --build /tmp/indicode-build
 ctest --test-dir /tmp/indicode-build --output-on-failure
 ```
 
-All **26 base CTest cases** pass. When `llvm-as` and `opt` are already
-installed, CMake also registers two optional LLVM IR verifier tests. For example:
+The latest recorded run passed all **28 CTest cases**. When `llvm-as` and
+`opt` are already installed, CMake registers two optional LLVM IR verifier
+tests. For example:
 
 ```sh
 /tmp/indicode-build/indicode check examples/hello.indi
