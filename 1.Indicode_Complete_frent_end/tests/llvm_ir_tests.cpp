@@ -34,6 +34,9 @@ int main() {
     const auto supported = generate(
         "function add(left: Int, right: Int) -> Int { return left + right }\n"
         "function below(left: UInt2, right: UInt2) -> Bool { return left < right }\n"
+        "function signed_divide(left: Long, right: Long) -> Long { return left / right }\n"
+        "function unsigned_remainder(left: ULong, right: ULong) -> ULong { return left % right }\n"
+        "function bitwise_not(value: Int) -> Int { return ~value }\n"
         "function invert(value: Bool) -> Bool { return !value }\n"
         "function choose(value: Bool) -> Int { if value { return 1 } else { return 0 } }\n"
         "function countdown(start: Int) -> Int {\n"
@@ -52,6 +55,7 @@ int main() {
         "function done(value: Int) { return }\n"
         "function invoke(value: Int) { done(value) }\n"
         "function float_sum(left: Float, right: Float) -> Float { return left + right }\n"
+        "function half_sum(left: Half, right: Half) -> Half { return left + right }\n"
         "function below_float(left: Double, right: Double) -> Bool { return left < right }\n"
         "function float_literal() -> Float { return 1.25 }\n"
         "function converted(input: Int) -> Long { return to_Long(input, checked: true) }\n"
@@ -65,6 +69,10 @@ int main() {
         "function make_items() -> List<Int> { return [1, 2, 3] }\n"
         "function first_char(text: Text) -> Char { return text[0] }\n"
         "function same_text(left: Text, right: Text) -> Bool { return left == right }\n"
+        "function text_before(left: Text, right: Text) -> Bool { return left <= right }\n"
+        "function char_before(left: Char, right: Char) -> Bool { return left < right }\n"
+        "function preserve_tensor(input: Tensor<Float, [Batch, 3]>) -> Tensor<Float, [Batch, 3]> "
+        "{ return input }\n"
         "function greeting() -> Text { return \"hello\\nworld\" }\n"
         "function range_total() -> Int {\n"
         "    var total: Int = 0\n"
@@ -86,8 +94,14 @@ int main() {
     require(supported.ir.find("define i32 @add(i32 %in.") != std::string::npos &&
                 supported.ir.find(" = add i32 ") != std::string::npos &&
                 supported.ir.find(" = icmp ult i16 ") != std::string::npos &&
+                supported.ir.find(" = sdiv i64 ") != std::string::npos &&
+                supported.ir.find(" = urem i64 ") != std::string::npos &&
+                supported.ir.find(" = xor i32 ") != std::string::npos &&
                 supported.ir.find(" = fadd float ") != std::string::npos &&
+                supported.ir.find(" = fadd half ") != std::string::npos &&
                 supported.ir.find(" = fcmp olt double ") != std::string::npos &&
+                supported.ir.find("indicode_text_compare") != std::string::npos &&
+                supported.ir.find("define ptr @preserve_tensor(ptr ") != std::string::npos &&
                 supported.ir.find("ret float 1.250000000e+00") != std::string::npos &&
                 supported.ir.find("ret i32 128512") != std::string::npos &&
                 supported.ir.find("ret i32 10") != std::string::npos &&
@@ -121,16 +135,47 @@ int main() {
 
     const auto global = generate(
         "answer = 1\n"
+        "answer = answer + 1\n"
         "function read_answer() -> Int { return answer }\n");
     require(global.diagnostics.empty() &&
                 global.ir.find("@.indi.global.") != std::string::npos &&
+                global.ir.find(" = global i32", global.ir.find(" = global i32") + 1) ==
+                    std::string::npos &&
                 global.ir.find("define i32 @indicode_entry()") != std::string::npos &&
                 global.ir.find("define i32 @read_answer()") != std::string::npos,
-            "top-level variables should become globals initialized by indicode_entry");
+            "top-level assignments should share one global initialized by indicode_entry");
 
-    const auto unsupported = generate(
-        "function identity<T>(value: T) -> T { return value }\n");
-    require(unsupported.ir.empty() && unsupported.diagnostics.size() == 1 &&
-                unsupported.diagnostics.front().code == "E-IR-001",
-            "unsupported generic specialization should fail with a stable IR diagnostic");
+    const auto entry_collision = generate(
+        "answer = 1\n"
+        "function indicode_entry() -> Int { return answer }\n");
+    require(entry_collision.diagnostics.empty() &&
+                entry_collision.ir.find("define i32 @indicode.entry.init()") != std::string::npos &&
+                entry_collision.ir.find("define i32 @indicode_entry()") != std::string::npos,
+            "the generated global initializer should not collide with a user function");
+
+    const auto generic = generate(
+        "function identity<T>(value: T) -> T { return value }\n"
+        "function sum<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+        "function forwarded<T: Numeric>(value: T) -> T { return sum(value, value) }\n"
+        "function first<T>(values: List<T>) -> T { return values[0] }\n"
+        "function consume_range<T: Integer>(values: Range<T>) { for item in values { say(item) } }\n"
+        "function recursive<T>(value: T) -> T {\n"
+        "    if true { return recursive(value) } else { return value }\n"
+        "}\n"
+        "function generic_int() -> Int { return forwarded(identity(21)) }\n"
+        "function generic_float() -> Float { return sum(1.0, 2.0) }\n"
+        "function generic_list() -> Int { return first([4, 5]) }\n"
+        "function generic_range() { consume_range(0..3) }\n"
+        "function generic_recursive() -> Int { return recursive(7) }\n"
+        "global_answer = identity(value: 42)\n");
+    require(generic.diagnostics.empty() &&
+                generic.ir.find("define i32 @indicode.generic.") != std::string::npos &&
+                generic.ir.find("define float @indicode.generic.") != std::string::npos &&
+                generic.ir.find("add float ") != std::string::npos &&
+                generic.ir.find("indicode_list_get_Int") != std::string::npos &&
+                generic.ir.find("foreach.cond.") != std::string::npos &&
+                generic.ir.find("call i32 @indicode.generic.") != std::string::npos &&
+                generic.ir.find("define i32 @indicode.generic.") != std::string::npos &&
+                generic.ir.find("define i32 @indicode_entry()") != std::string::npos,
+            "generic functions should specialize for scalar and collection arguments, including nested calls");
 }

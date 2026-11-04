@@ -150,6 +150,31 @@ if(BUILD_TESTING)
             -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ir_scalar.indi
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_llvm_ir.cmake
     )
+    add_test(NAME cli_llvm_ir_generics
+        COMMAND indicode ir ${CMAKE_CURRENT_SOURCE_DIR}/examples/ir_generics.indi
+    )
+    find_program(INDICODE_LLVM_AS llvm-as)
+    find_program(INDICODE_LLVM_OPT opt)
+    if(INDICODE_LLVM_AS AND INDICODE_LLVM_OPT)
+        add_test(NAME llvm_ir_verification_scalar
+            COMMAND ${CMAKE_COMMAND}
+                -DINDICODE=$<TARGET_FILE:indicode>
+                -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ir_scalar.indi
+                -DLLVM_AS=${INDICODE_LLVM_AS}
+                -DLLVM_OPT=${INDICODE_LLVM_OPT}
+                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_llvm_ir_validation.cmake
+        )
+        add_test(NAME llvm_ir_verification_generics
+            COMMAND ${CMAKE_COMMAND}
+                -DINDICODE=$<TARGET_FILE:indicode>
+                -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ir_generics.indi
+                -DLLVM_AS=${INDICODE_LLVM_AS}
+                -DLLVM_OPT=${INDICODE_LLVM_OPT}
+                -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_llvm_ir_validation.cmake
+        )
+    endif()
     add_test(NAME cli_rejects_type_error COMMAND indicode check ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/type_error.indi)
     set_tests_properties(cli_rejects_type_error PROPERTIES WILL_FAIL TRUE)
     add_test(NAME cli_json_diagnostics

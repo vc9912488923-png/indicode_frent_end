@@ -2,7 +2,7 @@
 
 **Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
 
-**Status date:** 2026-11-03
+**Status date:** 2026-11-04
 **Scope:** Indicode compiler front end only. This code audit replaces the previous all-area blueprint PDF.
 
 For the consolidated progress, completed-work summary, percentage breakdown, and remaining roadmap, see the [front-end status report](./FRONT_END_STATUS_REPORT.md) and its [PDF](../Compiler_Front_End_Status_Report.pdf).
@@ -108,9 +108,11 @@ machine-code compiler or runtime.
 
 ## Verification
 
-The current acceptance suite contains **25 CTest cases**. A fresh Release
-configure/build and all 25 tests pass. The suite covers source mapping,
+The current acceptance suite contains **26 base CTest cases**. If `llvm-as`
+and `opt` are already installed, CMake adds two optional IR validation tests.
+The current environment ran all **28 tests** successfully. The suite covers source mapping,
 lexing/trivia, parser/AST/grammar, semantic analysis and HIR verification,
 diagnostics, symbol indexing, module/import/overload APIs, incremental parsing,
-CLI output and installed-package consumption. Passing tests establish the
-covered behaviors, not exhaustive language conformance.
+CLI output, installed-package consumption, and LLVM assembly/verification.
+Passing tests establish the covered behaviors, not exhaustive language
+conformance.

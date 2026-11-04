@@ -60,12 +60,13 @@ JSON use schema version 2.
   edits; tests compare results with clean parses.
 - **Packaging:** CMake installs/exports the library and CLI. A separate CMake
   consumer test verifies installed-package use.
-- **LLVM IR generator:** about 70% estimated coverage of the planned
-  single-file v1 lowering scope. It additionally lowers floating-point,
-  character/text, record/list/range, global, conversion, and `repeat`/`for`
-  constructs. Generic functions, tensor operations, and runtime helper
-  implementations remain incomplete. LLVM libraries/tools are not required or
-  downloaded; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
+- **LLVM IR generator:** 100% of documented single-file front-end v1
+  constructs lower to textual IR, including generic function
+  monomorphization, globals, records/collections, and control flow. This is not
+  runtime or ABI completeness: helper implementations, machine-code
+  generation, linking, and execution are outside scope. Tensor operations,
+  modules, and generic records are not in front-end v1. LLVM is optional and
+  never downloaded; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
 
 ## Weighted readiness estimate
 
@@ -94,8 +95,10 @@ should not be called fully production-ready.
 
 ## Verification
 
-The current CMake/CTest suite contains **25 tests**. A fresh Release configure,
-build, and `ctest --output-on-failure` run passed **25/25**. Coverage includes
+The current CMake/CTest suite contains **26 base tests**, plus two optional
+LLVM assembly/verifier tests when `llvm-as` and `opt` are already installed.
+The current environment has both tools, so a fresh configure, build, and
+`ctest --output-on-failure` run passed **28/28**. Coverage includes
 source mapping, lexer payloads/trivia, grammar/operators, parser recovery,
 AST printing/visiting/scalability, semantics, HIR verification, resolution
 APIs, symbol indexing, incremental parsing, CLI JSON/diagnostics, and an
@@ -118,8 +121,9 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
    and sanitizer gates.
 3. Add reproducible CI/release workflows and compatibility policies for the
    package and JSON schemas; test more compilers/platforms.
-4. Expand the separately tracked textual IR generator beyond its estimated 70%
-  scope only after each new lowering's semantics and tests are defined.
+4. New IR work beyond the documented front-end v1 scope requires a separate
+  language/runtime/backend decision; it must not be conflated with v1
+  completion.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
 training, and device backends are outside package 0.9.8.

@@ -1,0 +1,51 @@
+function identity<T>(value: T) -> T {
+    return value
+}
+
+function sum<T: Numeric>(left: T, right: T) -> T {
+    return left + right
+}
+
+function double<T: Numeric>(value: T) -> T {
+    return sum(value, value)
+}
+
+function first<T>(values: List<T>) -> T {
+    return values[0]
+}
+
+function consume_range<T: Integer>(values: Range<T>) {
+    for item in values {
+        say(item)
+    }
+}
+
+function recursive<T>(value: T) -> T {
+    if true {
+        return recursive(value)
+    } else {
+        return value
+    }
+}
+
+function use_integer() -> Int {
+    return double(identity(value: 21))
+}
+
+function use_float() -> Float {
+    return sum(1.0, 2.0)
+}
+
+function use_list() -> Int {
+    return first([4, 5])
+}
+
+function use_range() {
+    consume_range(0..3)
+}
+
+function use_recursive() -> Int {
+    return recursive(7)
+}
+
+global_answer = identity(42)

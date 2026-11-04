@@ -22,7 +22,7 @@ valid input to a typed HIR that is independently verified.
 | Front-end catalogue items implemented and tested at their stated scope | **40 / 40** |
 | Partially implemented catalogue items | **0 / 40** |
 | Not started catalogue items | **0 / 40** |
-| Current CTest suite | **25 / 25 passed** |
+| Current CTest suite | **28 / 28 passed** (includes optional locally available LLVM validation) |
 
 The 97.25% figure is a judgment-based, weighted estimate of front-end
 readiness, including release and conformance gaps. It is not the percentage
@@ -51,11 +51,11 @@ revalidation and clean reparse matching for repaired or invalid fragments.
 The source-aware symbol/reference index is available as an HIR snapshot API;
 editor-protocol integration remains. These boundaries remain visible rather
 than being claimed as language-level support. A separately tracked textual
-LLVM IR generator is estimated at about 70% of its planned single-file v1
-lowering scope; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md) for
-implemented areas and gaps. It does not provide an LLVM framework adapter,
-machine-code generation, runtime helper implementations, tensor operations, or
-device backend. The project is not production-ready: full conformance,
+LLVM IR generator lowers 100% of documented single-file v1 constructs,
+including generic specialization; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md)
+for its scope. It does not provide an LLVM framework adapter, machine-code
+generation, runtime helper implementations, tensor operations, or device
+backend. The project is not production-ready: full conformance,
 coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
 policy remain.
 
@@ -71,7 +71,7 @@ policy remain.
 | Type checking and semantic validation | 15% | 99% | 14.85 | v1 declarations, generic functions/constraints, effects, limited ownership modes, expressions, calls, conversions, records, collections, tensor shapes, constants and conservative flow/return checks; full language and runtime semantics remain outside scope. |
 | Typed HIR and verification | 15% | 99% | 14.85 | AST lowering, stable symbols, AST/HIR JSON schema v2 and independent checks of types, scopes, identities, calls, ownership/effect metadata, mutability and return paths; deserialization and broader compatibility guarantees remain. |
 | CLI and diagnostics tooling | 5% | 99% | 4.95 | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts, diagnostic JSON schema v1, and HIR symbol/reference index; editor-protocol integration and terminal display-width support remain. |
-| Tests, docs and integration | 10% | 99% | 9.90 | 25 passing CTest cases including AST scalability, symbol index, module/import/overload APIs, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
+| Tests, docs and integration | 10% | 99% | 9.90 | 26 base CTest cases plus two optional locally available LLVM IR verifier tests; AST scalability, symbol index, module/import/overload APIs, malformed-input smoke tests and installed-package consumer; broader conformance, fuzzing, sanitizers and CI remain. |
 | **Total** | **100%** |  | **97.25%** | **Rounded display: 97%.** |
 
 Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 = 97.25`.
@@ -189,8 +189,9 @@ production/release readiness remain incomplete.
 
 ## Verification recorded for this report
 
-- A fresh Release CMake configure/build succeeds; the full CTest suite passes:
-  **25/25**.
+- A fresh Release CMake configure/build succeeds; the 26 base CTest cases and
+  two optional tests using locally installed `llvm-as` and `opt` pass:
+  **28/28** in this environment.
 - Covered tests include lexer/parser/AST/visitor/semantics/HIR/diagnostics,
   AST large-input destruction, symbol definitions/references/scopes/rebuild
   invalidation, module/import/overload resolver APIs, incremental parser

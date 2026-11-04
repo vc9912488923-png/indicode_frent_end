@@ -1,5 +1,6 @@
 #include "indicode/llvm_ir.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cctype>
 #include <cstdint>
@@ -1110,6 +1111,248 @@ std::unique_ptr<HirStmt> clone_statement(const HirStmt& statement) {
     return clone;
 }
 
+std::unique_ptr<HirFunction> clone_function(const HirFunction& function) {
+    auto clone = std::make_unique<HirFunction>();
+    clone->name = function.name;
+    clone->symbol_id = function.symbol_id;
+    clone->generic_parameters = function.generic_parameters;
+    clone->has_effect_annotation = function.has_effect_annotation;
+    clone->declared_effects = function.declared_effects;
+    clone->inferred_effects = function.inferred_effects;
+    clone->parameters = function.parameters;
+    clone->return_type = function.return_type;
+    clone->return_type_symbol_id = function.return_type_symbol_id;
+    clone->span = function.span;
+    for (const auto& statement : function.body) {
+        clone->body.push_back(clone_statement(*statement));
+    }
+    return clone;
+}
+
+using TypeSubstitution = std::unordered_map<std::string, std::string>;
+
+std::string substitute_type(const std::string& type, const TypeSubstitution& substitutions) {
+    if (const auto found = substitutions.find(type); found != substitutions.end()) {
+        return found->second;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        if (const auto element = generic_argument(type, constructor); !element.empty()) {
+            return constructor + substitute_type(element, substitutions) + ">";
+        }
+    }
+    return type;
+}
+
+void substitute_expression_types(HirExpr& expression, const TypeSubstitution& substitutions) {
+    expression.type = substitute_type(expression.type, substitutions);
+    if (expression.left) substitute_expression_types(*expression.left, substitutions);
+    if (expression.right) substitute_expression_types(*expression.right, substitutions);
+    for (auto& argument : expression.arguments) {
+        substitute_expression_types(*argument, substitutions);
+    }
+}
+
+void substitute_statement_types(HirStmt& statement, const TypeSubstitution& substitutions) {
+    statement.type = substitute_type(statement.type, substitutions);
+    if (statement.expression) substitute_expression_types(*statement.expression, substitutions);
+    for (auto& child : statement.body) substitute_statement_types(*child, substitutions);
+    for (auto& child : statement.else_body) substitute_statement_types(*child, substitutions);
+}
+
+void substitute_function_types(HirFunction& function, const TypeSubstitution& substitutions) {
+    function.return_type = substitute_type(function.return_type, substitutions);
+    for (auto& parameter : function.parameters) {
+        parameter.type = substitute_type(parameter.type, substitutions);
+    }
+    for (auto& statement : function.body) {
+        substitute_statement_types(*statement, substitutions);
+    }
+}
+
+bool bind_generic_type(const std::string& pattern, const std::string& actual,
+                       const std::set<std::string>& generic_names,
+                       TypeSubstitution& substitutions) {
+    if (generic_names.contains(pattern)) {
+        const auto [found, inserted] = substitutions.emplace(pattern, actual);
+        return inserted || found->second == actual;
+    }
+    for (const auto& constructor : {std::string("List<"), std::string("Range<")}) {
+        const auto pattern_element = generic_argument(pattern, constructor);
+        if (!pattern_element.empty()) {
+            const auto actual_element = generic_argument(actual, constructor);
+            return !actual_element.empty() &&
+                   bind_generic_type(pattern_element, actual_element, generic_names, substitutions);
+        }
+    }
+    return pattern == actual;
+}
+
+class FunctionSpecializer {
+public:
+    using FunctionMap = FunctionEmitter::FunctionMap;
+
+    FunctionSpecializer(const HirProgram& program, std::vector<Diagnostic>& diagnostics)
+        : program_(program), diagnostics_(diagnostics) {
+        for (const auto& function : program.functions) {
+            original_functions_.emplace(function.symbol_id, &function);
+            next_symbol_id_ = std::max(next_symbol_id_, function.symbol_id);
+        }
+        ++next_symbol_id_;
+    }
+
+    std::vector<std::unique_ptr<HirFunction>>& prepare_functions() {
+        for (const auto& function : program_.functions) {
+            if (!function.generic_parameters.empty()) continue;
+            auto lowered = clone_function(function);
+            auto* pointer = lowered.get();
+            functions_.push_back(std::move(lowered));
+            rewrite_function(*pointer);
+            if (!diagnostics_.empty()) return functions_;
+        }
+        finish_specializations();
+        return functions_;
+    }
+
+    void rewrite_function(HirFunction& function) {
+        for (auto& statement : function.body) rewrite_statement(*statement);
+    }
+
+    void finish_specializations() {
+        while (next_pending_ < pending_specializations_.size() && diagnostics_.empty()) {
+            auto* function = pending_specializations_[next_pending_++];
+            rewrite_function(*function);
+        }
+    }
+
+private:
+    static std::string specialization_key(std::uint64_t symbol_id,
+                                         const TypeSubstitution& substitutions,
+                                         const std::vector<GenericParameter>& parameters) {
+        std::string key = std::to_string(symbol_id);
+        for (const auto& parameter : parameters) {
+            const auto& type = substitutions.at(parameter.name);
+            key += ":" + std::to_string(type.size()) + ":" + type;
+        }
+        return key;
+    }
+
+    static std::string specialized_name(std::uint64_t symbol_id,
+                                        const TypeSubstitution& substitutions,
+                                        const std::vector<GenericParameter>& parameters) {
+        std::ostringstream name;
+        name << "indicode.generic." << symbol_id;
+        for (const auto& parameter : parameters) {
+            name << '.';
+            for (const unsigned char character : substitutions.at(parameter.name)) {
+                name << std::hex << std::setw(2) << std::setfill('0')
+                     << static_cast<unsigned>(character);
+            }
+        }
+        return name.str();
+    }
+
+    bool infer_substitutions(const HirFunction& function, const HirExpr& call,
+                             TypeSubstitution& substitutions) {
+        if (function.parameters.size() != call.arguments.size() ||
+            call.argument_names.size() != call.arguments.size()) {
+            return false;
+        }
+        std::set<std::string> generic_names;
+        for (const auto& parameter : function.generic_parameters) {
+            generic_names.insert(parameter.name);
+        }
+        std::vector<std::string> argument_types(function.parameters.size());
+        std::vector<bool> assigned(function.parameters.size(), false);
+        std::size_t next_positional = 0;
+        for (std::size_t index = 0; index < call.arguments.size(); ++index) {
+            const auto& argument_name = call.argument_names[index];
+            std::size_t parameter_index = function.parameters.size();
+            if (argument_name.empty()) {
+                while (next_positional < assigned.size() && assigned[next_positional]) {
+                    ++next_positional;
+                }
+                if (next_positional < assigned.size()) parameter_index = next_positional++;
+            } else {
+                for (std::size_t candidate = 0; candidate < function.parameters.size(); ++candidate) {
+                    if (function.parameters[candidate].name == argument_name) {
+                        parameter_index = candidate;
+                        break;
+                    }
+                }
+            }
+            if (parameter_index >= assigned.size() || assigned[parameter_index]) return false;
+            assigned[parameter_index] = true;
+            argument_types[parameter_index] = call.arguments[index]->type;
+        }
+        for (std::size_t index = 0; index < function.parameters.size(); ++index) {
+            if (!assigned[index] ||
+                !bind_generic_type(function.parameters[index].type, argument_types[index],
+                                  generic_names, substitutions)) {
+                return false;
+            }
+        }
+        return substitutions.size() == generic_names.size();
+    }
+
+    HirFunction* specialize(const HirFunction& function, const HirExpr& call) {
+        TypeSubstitution substitutions;
+        if (!infer_substitutions(function, call, substitutions)) {
+            diagnostics_.emplace_back(
+                DiagnosticSeverity::Error, "E-IR-002",
+                "generic call arguments do not determine a consistent specialization",
+                call.span);
+            return nullptr;
+        }
+        const auto key = specialization_key(function.symbol_id, substitutions,
+                                           function.generic_parameters);
+        if (const auto found = specializations_.find(key); found != specializations_.end()) {
+            return found->second;
+        }
+
+        auto instance = clone_function(function);
+        instance->name = specialized_name(function.symbol_id, substitutions,
+                                          function.generic_parameters);
+        instance->symbol_id = next_symbol_id_++;
+        instance->generic_parameters.clear();
+        substitute_function_types(*instance, substitutions);
+        auto* pointer = instance.get();
+        specializations_.emplace(key, pointer);
+        functions_.push_back(std::move(instance));
+        pending_specializations_.push_back(pointer);
+        return pointer;
+    }
+
+    void rewrite_expression(HirExpr& expression) {
+        if (expression.left) rewrite_expression(*expression.left);
+        if (expression.right) rewrite_expression(*expression.right);
+        for (auto& argument : expression.arguments) rewrite_expression(*argument);
+        const auto target = original_functions_.find(expression.symbol_id);
+        if (expression.kind != HirExprKind::Call || target == original_functions_.end() ||
+            target->second->generic_parameters.empty()) {
+            return;
+        }
+        auto* instance = specialize(*target->second, expression);
+        if (instance == nullptr) return;
+        expression.symbol = instance->name;
+        expression.symbol_id = instance->symbol_id;
+    }
+
+    void rewrite_statement(HirStmt& statement) {
+        if (statement.expression) rewrite_expression(*statement.expression);
+        for (auto& child : statement.body) rewrite_statement(*child);
+        for (auto& child : statement.else_body) rewrite_statement(*child);
+    }
+
+    const HirProgram& program_;
+    std::vector<Diagnostic>& diagnostics_;
+    FunctionMap original_functions_;
+    std::vector<std::unique_ptr<HirFunction>> functions_;
+    std::vector<HirFunction*> pending_specializations_;
+    std::unordered_map<std::string, HirFunction*> specializations_;
+    std::size_t next_pending_ = 0;
+    std::uint64_t next_symbol_id_ = 0;
+};
+
 } // namespace
 
 LlvmIrResult generate_llvm_ir(const HirProgram& program) {
@@ -1124,9 +1367,9 @@ LlvmIrResult generate_llvm_ir(const HirProgram& program) {
     RecordMap records;
     FunctionEmitter::BindingMap global_bindings;
     std::vector<std::string> global_definitions;
-    for (const auto& function : program.functions) {
-        functions.emplace(function.symbol_id, &function);
-    }
+    FunctionSpecializer specializer(program, result.diagnostics);
+    auto& lowered_functions = specializer.prepare_functions();
+    if (!result.diagnostics.empty()) return result;
     for (const auto& record : program.records) {
         records.emplace(record.name, &record);
     }
@@ -1135,6 +1378,7 @@ LlvmIrResult generate_llvm_ir(const HirProgram& program) {
             statement->kind != HirStmtKind::Assignment) {
             continue;
         }
+        if (global_bindings.contains(statement->symbol_id)) continue;
         const auto type = llvm_type(statement->type, records);
         if (!type || statement->type == "Void") {
             result.diagnostics.emplace_back(
@@ -1147,38 +1391,43 @@ LlvmIrResult generate_llvm_ir(const HirProgram& program) {
         global_bindings.emplace(statement->symbol_id, Binding{statement->type, name});
         global_definitions.push_back(name + " = global " + *type + " zeroinitializer");
     }
-    for (const auto& function : program.functions) {
-        if (!function.generic_parameters.empty()) {
-            result.diagnostics.emplace_back(
-                DiagnosticSeverity::Error, "E-IR-001",
-                "LLVM IR generation does not yet support generic functions", function.span);
-            break;
-        }
-        function_bodies.push_back(
-            FunctionEmitter(function, functions, records, global_bindings, declarations,
-                            globals, global_index,
-                            result.diagnostics).emit());
-        if (!result.diagnostics.empty()) break;
-    }
-    if (result.diagnostics.empty() && !program.statements.empty()) {
-        HirFunction initializer;
-        initializer.name = "indicode_entry";
-        initializer.return_type = "Int";
-        initializer.span = program.statements.front()->span;
+    std::unique_ptr<HirFunction> initializer;
+    if (!program.statements.empty()) {
+        initializer = std::make_unique<HirFunction>();
+        const bool entry_name_taken = std::any_of(
+            program.functions.begin(), program.functions.end(),
+            [](const HirFunction& function) { return function.name == "indicode_entry"; });
+        initializer->name = entry_name_taken ? "indicode.entry.init" : "indicode_entry";
+        initializer->return_type = "Int";
+        initializer->span = program.statements.front()->span;
         for (const auto& statement : program.statements) {
-            initializer.body.push_back(clone_statement(*statement));
+            initializer->body.push_back(clone_statement(*statement));
         }
+        specializer.rewrite_function(*initializer);
+        specializer.finish_specializations();
+        if (!result.diagnostics.empty()) return result;
         auto return_statement = std::make_unique<HirStmt>();
         return_statement->kind = HirStmtKind::Return;
-        return_statement->span = initializer.span;
+        return_statement->span = initializer->span;
         return_statement->expression = std::make_unique<HirExpr>();
         return_statement->expression->kind = HirExprKind::Literal;
         return_statement->expression->type = "Int";
         return_statement->expression->value = "0";
-        return_statement->expression->span = initializer.span;
-        initializer.body.push_back(std::move(return_statement));
+        return_statement->expression->span = initializer->span;
+        initializer->body.push_back(std::move(return_statement));
+    }
+    for (const auto& function : lowered_functions) {
+        functions.emplace(function->symbol_id, function.get());
+    }
+    for (const auto& function : lowered_functions) {
         function_bodies.push_back(
-            FunctionEmitter(initializer, functions, records, global_bindings, declarations,
+            FunctionEmitter(*function, functions, records, global_bindings, declarations,
+                            globals, global_index, result.diagnostics).emit());
+        if (!result.diagnostics.empty()) break;
+    }
+    if (result.diagnostics.empty() && initializer) {
+        function_bodies.push_back(
+            FunctionEmitter(*initializer, functions, records, global_bindings, declarations,
                             globals, global_index, result.diagnostics).emit());
     }
     if (result.diagnostics.empty()) {

@@ -14,6 +14,18 @@ function below(left: Int2, right: Int2) -> Bool {
     return left < right
 }
 
+function signed_divide(left: Long, right: Long) -> Long {
+    return left / right
+}
+
+function unsigned_remainder(left: ULong, right: ULong) -> ULong {
+    return left % right
+}
+
+function bitwise_not(value: Int) -> Int {
+    return ~value
+}
+
 function invert(value: Bool) -> Bool {
     return !value
 }
@@ -64,6 +76,10 @@ function float_sum(left: Float, right: Float) -> Float {
     return left + right
 }
 
+function half_sum(left: Half, right: Half) -> Half {
+    return left + right
+}
+
 function below_float(left: Double, right: Double) -> Bool {
     return left < right
 }
@@ -104,8 +120,20 @@ function same_text(left: Text, right: Text) -> Bool {
     return left == right
 }
 
+function text_before(left: Text, right: Text) -> Bool {
+    return left <= right
+}
+
+function char_before(left: Char, right: Char) -> Bool {
+    return left < right
+}
+
 function greeting() -> Text {
     return "hello\nworld"
+}
+
+function preserve_tensor(input: Tensor<Float, [Batch, 3]>) -> Tensor<Float, [Batch, 3]> {
+    return input
 }
 
 function range_total() -> Int {

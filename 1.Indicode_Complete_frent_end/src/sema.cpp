@@ -95,10 +95,16 @@ std::string substitute_generic_type(
     return type;
 }
 
-bool satisfies_generic_constraint(const std::string& constraint, const std::string& type) {
-    if (constraint == "Numeric") return is_numeric_type(type);
-    if (constraint == "Integer") return is_integer_type(type);
-    return false;
+bool satisfies_generic_constraint(
+    const std::string& constraint, const std::string& type,
+    const std::unordered_map<std::string, std::string>& active_constraints) {
+    if (constraint == "Numeric" && is_numeric_type(type)) return true;
+    if (constraint == "Integer" && is_integer_type(type)) return true;
+    const auto active = active_constraints.find(type);
+    if (active == active_constraints.end()) return false;
+    return (constraint == "Numeric" &&
+            (active->second == "Numeric" || active->second == "Integer")) ||
+           (constraint == "Integer" && active->second == "Integer");
 }
 
 std::string range_element_type(const std::string& type) {
@@ -515,7 +521,9 @@ bool Analyzer::is_known_type(const std::string& type) const {
         return is_known_type(element_type) && element_type != "Void";
     }
     if (const auto element_type = range_element_type(type); !element_type.empty()) {
-        return is_integer_type(element_type);
+        const auto constraint = generic_constraints_.find(element_type);
+        return is_integer_type(element_type) ||
+               (constraint != generic_constraints_.end() && constraint->second == "Integer");
     }
     return records_.contains(type) || type == "Bool" || type == "Byte" || type == "U8" || type == "Int2" ||
            type == "UInt2" || type == "Int" || type == "UInt" || type == "Long" ||
@@ -989,7 +997,8 @@ std::string Analyzer::analyze_expression(Expr& expression) {
                         arguments_match = false;
                     } else if (!parameter.constraint.empty() &&
                                !satisfies_generic_constraint(parameter.constraint,
-                                                             inferred->second)) {
+                                                             inferred->second,
+                                                             generic_constraints_)) {
                         add_error("E-SEMA-056", "generic argument does not satisfy its constraint",
                                   expression.span);
                         arguments_match = false;

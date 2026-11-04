@@ -1,6 +1,6 @@
 # Indicode Front End
 
-**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a separate textual LLVM IR generator estimated at about 70% of the planned single-file v1 lowering scope. **This is not a complete compiler:** it does not generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
+**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a textual LLVM IR generator that lowers 100% of the documented single-file v1 constructs. **This is not a complete compiler:** it does not provide runtime helpers, generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
 
 The defined front-end v1/API feature catalogue is **100% implemented and focused-tested (40/40 items, IDs 445–484)**. This feature-scope completion is distinct from the **97.25% weighted readiness estimate**; broader conformance, release/CI, fuzzing, sanitizer and compatibility work remains. The API-only module/import/overload resolvers are not connected to the single-file v1 parser, semantic analyzer or CLI, and the HIR symbol index is not an LSP server. AST and typed-HIR JSON use schema version 2; diagnostic JSON uses schema version 1. The source grammar contract is version 1.0.0, separate from the package version.
 
@@ -24,6 +24,7 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
 /tmp/indicode-build/indicode typed examples/hello.indi
 /tmp/indicode-build/indicode typed-json examples/records.indi
 /tmp/indicode-build/indicode ir examples/ir_scalar.indi
+/tmp/indicode-build/indicode ir examples/ir_generics.indi
 /tmp/indicode-build/indicode check examples/records.indi
 /tmp/indicode-build/indicode check examples/tensor_shapes.indi
 /tmp/indicode-build/indicode --json-diagnostics check tests/fixtures/type_error.indi
@@ -33,7 +34,7 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
 
 `typed-json` prints verified project-owned HIR in a JSON envelope with `schemaVersion: 2`, including source spans and symbol IDs for a future backend adapter.
 
-`ir` emits textual LLVM IR for the implemented subset documented in [LLVM_IR_GENERATOR_V0.md](docs/LLVM_IR_GENERATOR_V0.md). It requires no LLVM installation. Existing compatible LLVM tools can optionally validate the output, but runtime helper implementations, machine-code generation, and linking are not provided.
+`ir` emits textual LLVM IR for all documented single-file v1 constructs, including generic specialization, as documented in [LLVM_IR_GENERATOR_V0.md](docs/LLVM_IR_GENERATOR_V0.md). It requires no LLVM installation. Existing compatible LLVM tools can optionally validate the output; runtime helpers, machine-code generation, and linking are not provided.
 
 `ast-json` serializes the parsed AST before semantic analysis. Its version-2 JSON includes declarations, node kinds, generic/effect/ownership metadata, source spans, expression metadata, and nested statements. Diagnostic JSON is independently versioned at schema version 1.
 
@@ -41,4 +42,4 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for measured progress, [docs/ROADMAP_BE
 
 ## Production readiness
 
-This is a buildable, tested front-end prototype with a textual IR generator that is not yet a complete lowering for the language. Broader language conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy remain. Do not rely on it for production workloads.
+This is a buildable, tested front-end prototype. Front-end feature-catalogue completion and IR lowering coverage are scoped to their documented v1 contracts; broader conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy remain. Do not rely on it for production workloads.

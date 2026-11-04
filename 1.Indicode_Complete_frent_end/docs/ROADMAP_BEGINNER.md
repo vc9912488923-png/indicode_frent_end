@@ -10,7 +10,8 @@ It can show tokens, an abstract syntax tree (AST), diagnostics, or a verified
 typed representation called HIR. It does **not** turn source into machine code
 or run programs, so it is a compiler front end, not a complete compiler.
 
-The project emits a subset of LLVM IR as text from verified HIR. It does not
+The project emits textual LLVM IR for all documented single-file v1 constructs
+from verified HIR. It does not
 download, copy, or build LLVM; compatible installed LLVM tools can optionally
 verify that text. It does not produce machine code, link, or run programs.
 
@@ -20,7 +21,7 @@ The code audit found implementations and focused tests for all **40/40
 front-end catalogue items (IDs 445-484)** at their listed v1 or library-API
 scope. The broader weighted readiness estimate is **97.25% (rounded to 97%)**;
 that figure includes unfinished conformance, editor integration, release/CI,
-fuzzing, sanitizer, and compatibility work. Passing the current 25 tests does
+fuzzing, sanitizer, and compatibility work. Passing the current tests does
 not prove that every possible Indicode program is supported.
 
 Some pieces are library APIs rather than language syntax:
@@ -95,7 +96,7 @@ specification and semantic rules document exact syntax and limits.
 | Symbol/reference index | HIR snapshot library API implemented and tested | Editor/LSP integration if required |
 | Incremental parsing | Top-level fragment reuse implemented and tested | Expand editor-oriented workflows and benchmarks |
 | Release readiness | Not complete | CI, supported compiler/platform matrix, fuzzing, sanitizers, compatibility policy |
-| LLVM IR text output | About 70% estimated: scalar/float values, calls, records/lists/text, globals, conversions, and control flow | Add generic and tensor lowering; keep runtime helpers and LLVM optional |
+| LLVM IR text output | 100% of documented single-file front-end v1 constructs, including generic specialization | Runtime helpers, target ABI, machine code, linking, and execution are separate/out of scope |
 | Machine code/runtime | Out of scope | Separate future decision |
 
 The front-end catalogue is complete by item count, but these broader
@@ -112,7 +113,8 @@ cmake --build /tmp/indicode-build
 ctest --test-dir /tmp/indicode-build --output-on-failure
 ```
 
-All **25 CTest cases** pass in the audited Release build. For example:
+All **26 base CTest cases** pass. When `llvm-as` and `opt` are already
+installed, CMake also registers two optional LLVM IR verifier tests. For example:
 
 ```sh
 /tmp/indicode-build/indicode check examples/hello.indi

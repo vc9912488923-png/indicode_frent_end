@@ -147,7 +147,9 @@ bool valid_tensor_type(const std::string& type) {
     return start == dimensions_end + 1;
 }
 
-std::string range_element_type(const std::string& type);
+std::string range_element_type(
+    const std::string& type,
+    const std::unordered_map<std::string, std::string>& generic_constraints = {});
 
 bool always_returns(const std::vector<std::unique_ptr<HirStmt>>& statements) {
     for (const auto& statement : statements) {
@@ -166,7 +168,8 @@ bool is_known_type(const std::string& type, const std::unordered_set<std::string
                    const std::unordered_map<std::string, std::string>& generic_constraints = {}) {
     if (generic_constraints.contains(type)) return true;
     if (type.starts_with("Tensor<")) return valid_tensor_type(type);
-    if (const auto range_type = range_element_type(type); !range_type.empty()) return true;
+    if (const auto range_type = range_element_type(type, generic_constraints);
+        !range_type.empty()) return true;
     constexpr std::string_view list_prefix = "List<";
     if (type.compare(0, list_prefix.size(), list_prefix) == 0 &&
         type.size() > list_prefix.size() && type.back() == '>') {
@@ -215,9 +218,18 @@ std::string substitute_hir_type(
     return type;
 }
 
-bool satisfies_hir_constraint(const std::string& constraint, const std::string& type) {
-    return (constraint == "Numeric" && is_numeric_type(type)) ||
-           (constraint == "Integer" && is_integer_type(type));
+bool satisfies_hir_constraint(
+    const std::string& constraint, const std::string& type,
+    const std::unordered_map<std::string, std::string>& active_constraints) {
+    if ((constraint == "Numeric" && is_numeric_type(type)) ||
+        (constraint == "Integer" && is_integer_type(type))) {
+        return true;
+    }
+    const auto active = active_constraints.find(type);
+    if (active == active_constraints.end()) return false;
+    return (constraint == "Numeric" &&
+            (active->second == "Numeric" || active->second == "Integer")) ||
+           (constraint == "Integer" && active->second == "Integer");
 }
 
 OwnershipMode ownership_mode_of(const HirExpr& expression) {
@@ -237,13 +249,20 @@ std::string list_element_type(const std::string& type) {
     return {};
 }
 
-std::string range_element_type(const std::string& type) {
+std::string range_element_type(
+    const std::string& type,
+    const std::unordered_map<std::string, std::string>& generic_constraints) {
     constexpr std::string_view range_prefix = "Range<";
     if (type.compare(0, range_prefix.size(), range_prefix) == 0 &&
         type.size() > range_prefix.size() && type.back() == '>') {
         const auto element_type = type.substr(range_prefix.size(),
                                               type.size() - range_prefix.size() - 1);
-        return is_integer_type(element_type) ? element_type : std::string{};
+        const auto constraint = generic_constraints.find(element_type);
+        return is_integer_type(element_type) ||
+                       (constraint != generic_constraints.end() &&
+                        constraint->second == "Integer")
+                   ? element_type
+                   : std::string{};
     }
     return {};
 }
@@ -736,7 +755,8 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                 const auto inferred = substitutions.find(generic_parameter.name);
                 if (inferred == substitutions.end() ||
                     (!generic_parameter.constraint.empty() &&
-                     !satisfies_hir_constraint(generic_parameter.constraint, inferred->second))) {
+                     !satisfies_hir_constraint(generic_parameter.constraint, inferred->second,
+                                               active_generic_constraints))) {
                     matches = false;
                 }
             }
@@ -872,7 +892,9 @@ std::vector<Diagnostic> verify_hir(const HirProgram& program) {
                 break;
             case HirStmtKind::ForEach: {
                 auto element_type = value_type == "Text" ? "Char" : list_element_type(value_type);
-                if (element_type.empty()) element_type = range_element_type(value_type);
+                if (element_type.empty()) {
+                    element_type = range_element_type(value_type, active_generic_constraints);
+                }
                 if (statement->name.empty() || element_type.empty() || statement->type != element_type) {
                     diagnostics.push_back({DiagnosticSeverity::Error, "E-HIR-022",
                                            "for-each binding does not match its iterable element type",

@@ -287,7 +287,8 @@ int main() {
     const indicode::SourceFile generic_source{
         "generic_hir.indi",
         "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
-        "answer = add(20, 22)\n"
+        "function forwarded<T: Numeric>(value: T) -> T { return add(value, value) }\n"
+        "answer = forwarded(20)\n"
     };
     const auto generic_lexed = indicode::Lexer(generic_source).lex();
     auto generic_parsed = indicode::Parser(generic_lexed.tokens).parse();

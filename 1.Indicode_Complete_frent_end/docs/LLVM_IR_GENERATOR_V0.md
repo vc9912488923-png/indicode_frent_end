@@ -1,55 +1,57 @@
 # LLVM IR Generator v0
 
-The front end and textual IR generator are separate milestones. The generator
-consumes verified project-owned HIR and writes LLVM IR text. It does not link
-LLVM libraries, download or build LLVM, invoke LLVM as part of normal builds,
-produce machine code, link programs, or execute them.
+The generator consumes independently verified, project-owned HIR and emits
+textual LLVM IR. It does not download, build, or link LLVM libraries, invoke
+LLVM during normal compilation, produce machine code, provide a runtime, link
+programs, or execute them.
 
-The current implementation is estimated at **about 70% of the planned
-single-file v1-to-LLVM-IR lowering scope**. This is a scope estimate, not a
-test-coverage percentage or a compiler-wide readiness score. The front-end
-readiness estimate is tracked separately in [PROGRESS.md](./PROGRESS.md).
+**Completion: 100% of the documented single-file front-end v1 constructs have
+a textual IR lowering.** This is feature-scope completion, not a claim of
+runtime/ABI completeness, test coverage, or production readiness. It excludes
+syntax and behavior outside the front-end v1 contract.
 
-## Implemented lowering
+## Lowered constructs
 
-- Non-generic functions, parameters, locals, top-level globals and an
-  `indicode_entry` initializer function.
-- `Bool`, integer types (`Byte`, `U8`, `Int2`, `UInt2`, `Int`, `UInt`, `Long`,
-  `ULong`), floating-point types (`Half`, `Float`, `Double`), `Char`, `Text`,
-  records, lists, and ranges.
-- Assignments, returns, arithmetic, comparisons, unary operators, checked
-  numeric conversions, ownership markers as value-preserving wrappers, and
-  direct calls to declared non-generic functions.
-- `if`/`else`, `while`, `repeat`, `for` over ranges/lists/text, and short-circuit
-  `&&`/`||`.
-- Record construction/member reads; list construction/indexing; text
-  literals/indexing/comparison; and range construction/iteration.
-- Named call arguments are evaluated in source order and passed in parameter
-  order.
+- Non-generic functions and on-demand monomorphizations of generic functions,
+  including nested and recursive generic calls.
+- Parameters, local and top-level bindings, assignment, returns, direct calls,
+  and named arguments. Call arguments are evaluated in source order and emitted
+  in parameter order.
+- `Bool`, all v1 integer and floating-point types, `Char`, `Text`, records,
+  `List<T>`, `Range<T>`, and opaque-pointer tensor values.
+- Arithmetic, comparisons, unary operators, checked-conversion helper calls,
+  ownership markers as value-preserving wrappers, and short-circuit Boolean
+  logic.
+- `if`/`else`/`else if`, `while`, `repeat`, and `for` over integer ranges,
+  lists, or text.
+- Record construction and member reads; list construction and indexing; text
+  literals, indexing, and comparisons; range construction and iteration.
+- A generated `indicode_entry` initializer when top-level statements exist.
 
 Integer mappings follow the front end's range rules: `Byte`/`U8` map to `i8`,
 `Int2`/`UInt2` to `i16`, `Int`/`UInt` to `i32`, and `Long`/`ULong` to `i64`.
-`Bool` maps to `i1`, `Char` to `i32`, and floating-point types to their
-corresponding LLVM types. Arithmetic is emitted without overflow flags. This
-is an IR mapping, not a complete Indicode runtime semantics or ABI guarantee.
+`Bool` and `Char` map to `i1` and `i32`; floating-point types map to their
+corresponding LLVM types. Tensors are opaque `ptr` values: the v1 language has
+no tensor operations to lower. Arithmetic is emitted without overflow flags.
+This mapping does not promise a platform ABI or define runtime behavior.
 
-## Not implemented or incomplete
+## Explicitly outside this milestone
 
-- Generic function lowering/specialization and multi-file module compilation.
-- Tensor construction and operations. Tensor values can only pass through as
-  opaque pointers where the HIR already provides a value.
+- Module/import compilation, overload syntax, generic record declarations,
+  and tensor operations are not part of front-end grammar/semantics v1.
 - Runtime implementations for `say`, checked conversions, text, and list
-  helpers. The IR declares these helpers, but does not define or link them.
+  helpers. The IR declares helper signatures; consumers must provide compatible
+  implementations to link or run a program.
 - Target triple, data layout, target-specific ABI, machine-code generation,
   linking, and execution.
 
-Unsupported constructs produce diagnostics instead of partial IR. The output
-uses opaque pointers and should be validated with a compatible LLVM tool if one
-is already installed. LLVM tools are optional and are not downloaded or
-required by the build. For example:
+The generator reports diagnostics instead of returning partial IR for invalid
+or unsupported HIR. It uses opaque pointers. LLVM tools are optional and are
+never downloaded or required. If compatible tools already exist, CMake
+registers additional IR assembly/verifier tests. Manual validation is:
 
 ```sh
-/tmp/indicode-build/indicode ir examples/ir_scalar.indi > /tmp/indicode.ll
+/tmp/indicode-build/indicode ir examples/ir_generics.indi > /tmp/indicode.ll
 llvm-as /tmp/indicode.ll -o /tmp/indicode.bc
 opt -passes=verify -disable-output /tmp/indicode.bc
 ```

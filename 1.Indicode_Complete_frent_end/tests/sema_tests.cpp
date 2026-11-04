@@ -80,9 +80,13 @@ int main() {
         "generic.indi",
         "function identity<T>(value: T) -> T { return value }\n"
         "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"
+        "function forwarded<T: Numeric>(value: T) -> T { return add(value, value) }\n"
         "function first<T>(items: List<T>) -> T { return items[0] }\n"
+        "function consume_range<T: Integer>(values: Range<T>) { for item in values { say(item) } }\n"
+        "function use_range() { consume_range(0..3) }\n"
         "one = identity(1)\n"
         "sum = add(2, 3)\n"
+        "forwarded_sum = forwarded(6)\n"
         "head = first([4, 5])\n"
     };
     auto generic_program = parse_source(generic_source);
@@ -90,8 +94,9 @@ int main() {
     require(generic_result.diagnostics.empty() &&
                 generic_program.statements[0]->declared_type == "Int" &&
                 generic_program.statements[1]->declared_type == "Int" &&
-                generic_program.statements[2]->declared_type == "Int",
-            "generic calls should infer nested type variables and substitute return types");
+                generic_program.statements[2]->declared_type == "Int" &&
+                generic_program.statements[3]->declared_type == "Int",
+            "generic calls should infer nested type variables, forward constraints, and substitute return types");
 
     const indicode::SourceFile invalid_generic_source{
         "invalid_generic.indi",
