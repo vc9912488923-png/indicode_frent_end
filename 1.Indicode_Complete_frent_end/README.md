@@ -1,6 +1,6 @@
 # Indicode Front End
 
-**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a textual LLVM IR generator that lowers 100% of the documented single-file v1 constructs. **This is not a complete compiler:** it does not provide runtime helpers, generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
+**Package version: 1.0.0.** This project builds the C++20 front end for the proposed Indicode language and a textual LLVM IR generator that lowers 100% of the documented single-file v1 constructs. It does not provide runtime helpers, generate machine code, link, or execute programs; those belong to a separate backend/runtime scope. LLVM is not downloaded, vendored, or built here.
 
 The documented front-end v1/API catalogue is **100% implemented and focused-tested (40/40 items, IDs 445–484)**, and the textual LLVM IR generator lowers **100% of documented single-file v1 constructs**. Together, they complete the requested front-end + IR milestone within its stated scope. This is not a claim that every possible language feature or production/release criterion is complete. Module/import/overload resolver APIs are not connected to the single-file v1 parser, semantic analyzer or CLI, and the HIR symbol index is not an LSP server. AST and typed-HIR JSON use schema version 2; diagnostic JSON uses schema version 1. The source grammar contract is version 1.0.0, separate from the package version.
 

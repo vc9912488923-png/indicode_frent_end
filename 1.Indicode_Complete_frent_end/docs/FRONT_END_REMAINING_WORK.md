@@ -1,6 +1,6 @@
 # Compiler Front-End: Scope Audit and Deferred Work
 
-**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+**Front-end package version:** 1.0.0.
 
 **Status date:** 2026-11-04
 **Scope:** Front-end v1/API code audit; together with the textual LLVM IR generator, it supports the completed front-end + IR milestone.
@@ -44,7 +44,7 @@ Some catalogue entries are library APIs and are not integrated into the single-f
 | 455 | Parser state | Implemented/tested | Explicit parser cursor and progress guard in `parser.cpp`; `parser_tests`, `parser_robustness_tests`. |
 | 456 | Recursive descent parser | Implemented/tested | `parser.cpp` parses declarations, statements, generic functions, ownership modes, and effects; `grammar_tests`, `parser_tests`. Modules/import syntax and overload declarations are not parsed. |
 | 457 | Pratt expression parser | Implemented/tested | `parser.cpp` precedence table; every binary operator, prefix nesting, calls/index/member tested in `grammar_tests`. |
-| 458 | Grammar version | Implemented/tested | `grammar.hpp` exposes 1.0.0; grammar/spec agreement tested in `grammar_tests`. Package version 0.9.8 is separate. |
+| 458 | Grammar version | Implemented/tested | `grammar.hpp` exposes 1.0.0; grammar/spec agreement tested in `grammar_tests`. Package version 1.0.0 is a separate version identifier. |
 | 459 | AST context | Implemented/tested | `ast.hpp` ownership plus `AST_CONTEXT_V1.md`; parser tests verify AST survives parser/source destruction. |
 | 460 | AST node arena | Implemented/tested | Deliberate `unique_ptr` ownership in `ast.hpp`; `ast_scalability_tests` parses/destroys 10,000 statements. No arena is used. |
 | 461 | AST visitor | Implemented/tested | `ast_visitor.hpp/.cpp`; `ast_visitor_tests` covers each declaration/statement/expression kind. |

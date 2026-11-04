@@ -1,6 +1,6 @@
 # Indicode Front-End Guide and Roadmap
 
-**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+**Front-end package version:** 1.0.0.
 **Updated:** 2026-11-04
 
 ## What is this project?
@@ -33,7 +33,8 @@ Some pieces are library APIs rather than language syntax:
 - Incremental parsing reuses unchanged top-level fragments after source edits.
 
 See the [combined front-end + LLVM IR status](./COMPILER_FRONT_END_LLVM_IR_STATUS.md), the [status page](./FRONT_END_STATUS_REPORT.md), the [40-item code audit](./FRONT_END_REMAINING_WORK.md), and the [progress details](./PROGRESS.md).
-The source grammar is version 1.0.0, separate from package version 0.9.8.
+The source grammar and package are both version 1.0.0; they version different
+contracts.
 AST/HIR JSON use schema version 2; diagnostic JSON uses schema version 1.
 
 ## What works in the supported language

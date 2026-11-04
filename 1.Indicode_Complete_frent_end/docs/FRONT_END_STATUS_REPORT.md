@@ -1,7 +1,7 @@
 # Indicode Compiler Front-End Status
 
 **Status date:** 2026-11-04
-**Package version:** 0.9.8 (pre-release)
+**Package version:** 1.0.0
 **Grammar version:** 1.0.0
 
 ## Result

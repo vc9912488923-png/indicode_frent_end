@@ -1,6 +1,6 @@
 # Indicode Front-End Language Specification
 
-**Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
+**Front-end package version:** 1.0.0.
 
 **Grammar version:** 1.0.0
 **Status:** Normative for the syntax accepted by this front-end release.

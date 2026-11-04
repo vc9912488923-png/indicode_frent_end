@@ -1,6 +1,6 @@
 # Indicode Front-End Progress
 
-**Package version:** 0.9.8 (pre-release).
+**Package version:** 1.0.0.
 **Updated:** 2026-11-04
 
 ## Scope and status
@@ -22,7 +22,7 @@ status report](./COMPILER_FRONT_END_LLVM_IR_STATUS.md), the [front-end status
 page](./FRONT_END_STATUS_REPORT.md), and the [40-item code audit](./FRONT_END_REMAINING_WORK.md).
 
 The source grammar contract is **1.0.0**; it is separate from the package
-version **0.9.8**. Diagnostic JSON uses schema version 1. AST JSON and typed-HIR
+version **1.0.0**. Diagnostic JSON uses schema version 1. AST JSON and typed-HIR
 JSON use schema version 2.
 
 ## Implemented code areas
@@ -113,4 +113,4 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
    milestone.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
-training, and device backends are outside package 0.9.8.
+training, and device backends are outside package 1.0.0.

@@ -1,7 +1,7 @@
 # Indicode Compiler Front-End and LLVM IR Status
 
 **Status date:** 2026-11-04  
-**Package version:** 0.9.8 (pre-release)  
+**Package version:** 1.0.0
 **Grammar version:** 1.0.0  
 **Milestone:** Compiler front end plus textual LLVM IR generation; no machine-code backend.
 
