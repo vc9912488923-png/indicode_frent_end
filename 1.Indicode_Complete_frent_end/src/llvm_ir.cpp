@@ -51,8 +51,11 @@ struct Binding {
 
 class FunctionEmitter {
 public:
-    FunctionEmitter(const HirFunction& function, std::vector<Diagnostic>& diagnostics)
-        : function_(function), diagnostics_(diagnostics) {}
+    using FunctionMap = std::unordered_map<std::uint64_t, const HirFunction*>;
+
+    FunctionEmitter(const HirFunction& function, const FunctionMap& functions,
+                    std::vector<Diagnostic>& diagnostics)
+        : function_(function), functions_(functions), diagnostics_(diagnostics) {}
 
     std::string emit() {
         collect_bindings();
@@ -79,6 +82,7 @@ public:
             output << *parameter_type << " %in." << parameter.symbol_id;
         }
         output << ") {\nentry:\n";
+        current_block_ = "entry";
 
         for (const auto& parameter : function_.parameters) {
             const auto& binding = bindings_.at(parameter.symbol_id);
@@ -91,6 +95,10 @@ public:
         emit_statements(output, function_.body);
         if (!diagnostics_.empty()) return {};
         if (!terminated_ && function_.return_type == "Void") output << "  ret void\n";
+        if (!terminated_ && function_.return_type != "Void") {
+            report("E-IR-003", "function can reach its end without returning a value", function_.span);
+            return {};
+        }
         output << "}\n";
         return output.str();
     }
@@ -106,30 +114,43 @@ private:
             bindings_.emplace(parameter.symbol_id,
                               Binding{parameter.type, "%slot." + std::to_string(parameter.symbol_id)});
         }
-        for (const auto& statement : function_.body) {
-            if (statement->kind != HirStmtKind::Variable) continue;
-            if (!llvm_type(statement->type) || statement->type == "Void") {
-                report("E-IR-001", "LLVM IR generation does not support local type '" +
-                                         statement->type + "'", statement->span);
-                continue;
+        collect_bindings(function_.body);
+    }
+
+    void collect_bindings(const std::vector<std::unique_ptr<HirStmt>>& statements) {
+        for (const auto& statement : statements) {
+            if (statement->kind == HirStmtKind::Variable) {
+                if (!llvm_type(statement->type) || statement->type == "Void") {
+                    report("E-IR-001", "LLVM IR generation does not support local type '" +
+                                             statement->type + "'", statement->span);
+                } else {
+                    bindings_.emplace(statement->symbol_id,
+                                      Binding{statement->type,
+                                              "%slot." + std::to_string(statement->symbol_id)});
+                }
             }
-            bindings_.emplace(statement->symbol_id,
-                              Binding{statement->type, "%slot." + std::to_string(statement->symbol_id)});
+            collect_bindings(statement->body);
+            collect_bindings(statement->else_body);
         }
     }
 
     void emit_local_allocas(std::ostringstream& output,
                            const std::vector<std::unique_ptr<HirStmt>>& statements) {
         for (const auto& statement : statements) {
-            if (statement->kind != HirStmtKind::Variable) continue;
-            const auto type = llvm_type(statement->type);
-            if (!type) continue;
-            const auto& binding = bindings_.at(statement->symbol_id);
-            output << "  " << binding.slot << " = alloca " << *type << '\n';
+            if (statement->kind == HirStmtKind::Variable) {
+                const auto type = llvm_type(statement->type);
+                if (type) {
+                    const auto& binding = bindings_.at(statement->symbol_id);
+                    output << "  " << binding.slot << " = alloca " << *type << '\n';
+                }
+            }
+            emit_local_allocas(output, statement->body);
+            emit_local_allocas(output, statement->else_body);
         }
     }
 
     std::string emit_expression(std::ostringstream& output, const HirExpr& expression) {
+        if (expression.kind == HirExprKind::Call) return emit_call(output, expression);
         const auto type = llvm_type(expression.type);
         if (!type || expression.type == "Void") {
             report("E-IR-001", "LLVM IR generation does not support expression type '" +
@@ -187,9 +208,7 @@ private:
                 return {};
             }
             if (expression.value == "&&" || expression.value == "||") {
-                report("E-IR-001", "short-circuit Boolean operators are not in the initial LLVM IR subset",
-                       expression.span);
-                return {};
+                return emit_short_circuit(output, expression);
             }
             const auto left = emit_expression(output, *expression.left);
             const auto right = emit_expression(output, *expression.right);
@@ -232,9 +251,117 @@ private:
         }
     }
 
+    std::string emit_call(std::ostringstream& output, const HirExpr& expression) {
+        const auto target = functions_.find(expression.symbol_id);
+        if (target == functions_.end() || target->second->name != expression.symbol) {
+            report("E-IR-001", "LLVM IR generation only supports direct calls to declared functions",
+                   expression.span);
+            return {};
+        }
+        const auto& function = *target->second;
+        if (!function.generic_parameters.empty()) {
+            report("E-IR-001", "LLVM IR generation does not yet support calls to generic functions",
+                   expression.span);
+            return {};
+        }
+
+        std::vector<std::string> evaluated_arguments;
+        evaluated_arguments.reserve(expression.arguments.size());
+        for (const auto& argument : expression.arguments) {
+            evaluated_arguments.push_back(emit_expression(output, *argument));
+            if (!diagnostics_.empty()) return {};
+        }
+
+        std::vector<std::string> ordered_arguments(function.parameters.size());
+        std::vector<bool> assigned(function.parameters.size(), false);
+        std::size_t next_positional = 0;
+        for (std::size_t index = 0; index < evaluated_arguments.size(); ++index) {
+            const std::string argument_name = index < expression.argument_names.size()
+                ? expression.argument_names[index] : "";
+            std::size_t parameter_index = function.parameters.size();
+            if (argument_name.empty()) {
+                while (next_positional < assigned.size() && assigned[next_positional]) {
+                    ++next_positional;
+                }
+                if (next_positional < assigned.size()) parameter_index = next_positional++;
+            } else {
+                for (std::size_t candidate = 0; candidate < function.parameters.size(); ++candidate) {
+                    if (function.parameters[candidate].name == argument_name) {
+                        parameter_index = candidate;
+                        break;
+                    }
+                }
+            }
+            if (parameter_index >= assigned.size() || assigned[parameter_index]) {
+                report("E-IR-002", "call arguments do not map to the target function parameters",
+                       expression.span);
+                return {};
+            }
+            assigned[parameter_index] = true;
+            ordered_arguments[parameter_index] = evaluated_arguments[index];
+        }
+        for (const bool parameter_assigned : assigned) {
+            if (!parameter_assigned) {
+                report("E-IR-002", "call is missing an argument for a target parameter", expression.span);
+                return {};
+            }
+        }
+
+        const auto return_type = llvm_type(function.return_type);
+        if (!return_type || expression.type != function.return_type) {
+            report("E-IR-001", "LLVM IR call has an unsupported return type", expression.span);
+            return {};
+        }
+        std::string result;
+        if (function.return_type != "Void") result = next_value();
+        output << "  ";
+        if (!result.empty()) output << result << " = ";
+        output << "call " << *return_type << " @" << function.name << '(';
+        for (std::size_t index = 0; index < function.parameters.size(); ++index) {
+            if (index != 0) output << ", ";
+            const auto parameter_type = llvm_type(function.parameters[index].type);
+            if (!parameter_type || function.parameters[index].type == "Void") {
+                report("E-IR-001", "LLVM IR call has an unsupported parameter type",
+                       function.parameters[index].span);
+                return {};
+            }
+            output << *parameter_type << ' ' << ordered_arguments[index];
+        }
+        output << ")\n";
+        return result;
+    }
+
+    std::string emit_short_circuit(std::ostringstream& output, const HirExpr& expression) {
+        const auto left = emit_expression(output, *expression.left);
+        if (!diagnostics_.empty()) return {};
+        const auto left_block = current_block_;
+        const auto block_id = block_index_++;
+        const auto right_label = "logic.rhs." + std::to_string(block_id);
+        const auto merge_label = "logic.end." + std::to_string(block_id);
+        const bool is_and = expression.value == "&&";
+        output << "  br i1 " << left << ", label %"
+               << (is_and ? right_label : merge_label) << ", label %"
+               << (is_and ? merge_label : right_label) << '\n';
+        terminated_ = true;
+
+        emit_label(output, right_label);
+        const auto right = emit_expression(output, *expression.right);
+        if (!diagnostics_.empty()) return {};
+        const auto right_block = current_block_;
+        output << "  br label %" << merge_label << '\n';
+        terminated_ = true;
+
+        emit_label(output, merge_label);
+        const auto result = next_value();
+        output << "  " << result << " = phi i1 [ " << (is_and ? "false" : "true")
+               << ", %" << left_block << " ], [ " << right << ", %" << right_block << " ]\n";
+        return result;
+    }
+
     void emit_statements(std::ostringstream& output,
                          const std::vector<std::unique_ptr<HirStmt>>& statements) {
         for (const auto& statement : statements) {
+            if (terminated_) return;
             switch (statement->kind) {
             case HirStmtKind::Variable:
             case HirStmtKind::Assignment: {
@@ -265,6 +392,19 @@ private:
                 }
                 terminated_ = true;
                 break;
+            case HirStmtKind::Expression:
+                if (!statement->expression) {
+                    report("E-IR-002", "malformed expression statement in HIR", statement->span);
+                    return;
+                }
+                static_cast<void>(emit_expression(output, *statement->expression));
+                break;
+            case HirStmtKind::If:
+                emit_if(output, *statement);
+                break;
+            case HirStmtKind::While:
+                emit_while(output, *statement);
+                break;
             default:
                 report("E-IR-001", "LLVM IR generation does not support this statement in the initial subset",
                        statement->span);
@@ -274,12 +414,89 @@ private:
         }
     }
 
+    std::string make_label(std::string_view stem) {
+        return std::string(stem) + "." + std::to_string(block_index_++);
+    }
+
+    void emit_label(std::ostringstream& output, const std::string& label) {
+        output << label << ":\n";
+        current_block_ = label;
+        terminated_ = false;
+    }
+
+    void emit_if(std::ostringstream& output, const HirStmt& statement) {
+        if (!statement.expression) {
+            report("E-IR-002", "malformed if condition in HIR", statement.span);
+            return;
+        }
+        const auto condition = emit_expression(output, *statement.expression);
+        if (!diagnostics_.empty()) return;
+        const auto then_label = make_label("if.then");
+        const auto else_label = make_label("if.else");
+        const auto end_label = make_label("if.end");
+        output << "  br i1 " << condition << ", label %" << then_label
+               << ", label %" << else_label << '\n';
+        terminated_ = true;
+
+        emit_label(output, then_label);
+        emit_statements(output, statement.body);
+        const bool then_terminated = terminated_;
+        if (!then_terminated) {
+            output << "  br label %" << end_label << '\n';
+            terminated_ = true;
+        }
+
+        emit_label(output, else_label);
+        emit_statements(output, statement.else_body);
+        const bool else_terminated = terminated_;
+        if (!else_terminated) {
+            output << "  br label %" << end_label << '\n';
+            terminated_ = true;
+        }
+
+        emit_label(output, end_label);
+        if (then_terminated && else_terminated) {
+            output << "  unreachable\n";
+            terminated_ = true;
+        }
+    }
+
+    void emit_while(std::ostringstream& output, const HirStmt& statement) {
+        if (!statement.expression) {
+            report("E-IR-002", "malformed while condition in HIR", statement.span);
+            return;
+        }
+        const auto condition_label = make_label("while.cond");
+        const auto body_label = make_label("while.body");
+        const auto end_label = make_label("while.end");
+        output << "  br label %" << condition_label << '\n';
+        terminated_ = true;
+
+        emit_label(output, condition_label);
+        const auto condition = emit_expression(output, *statement.expression);
+        if (!diagnostics_.empty()) return;
+        output << "  br i1 " << condition << ", label %" << body_label
+               << ", label %" << end_label << '\n';
+        terminated_ = true;
+
+        emit_label(output, body_label);
+        emit_statements(output, statement.body);
+        if (!terminated_) {
+            output << "  br label %" << condition_label << '\n';
+            terminated_ = true;
+        }
+        emit_label(output, end_label);
+    }
+
     std::string next_value() { return "%v." + std::to_string(value_index_++); }
 
     const HirFunction& function_;
+    const FunctionMap& functions_;
     std::vector<Diagnostic>& diagnostics_;
     std::unordered_map<std::uint64_t, Binding> bindings_;
     std::size_t value_index_ = 0;
+    std::size_t block_index_ = 0;
+    std::string current_block_;
     bool terminated_ = false;
 };
 
@@ -300,6 +517,10 @@ LlvmIrResult generate_llvm_ir(const HirProgram& program) {
 
     std::ostringstream output;
     output << "; Indicode textual LLVM IR\n";
+    FunctionEmitter::FunctionMap functions;
+    for (const auto& function : program.functions) {
+        functions.emplace(function.symbol_id, &function);
+    }
     for (const auto& function : program.functions) {
         if (!function.generic_parameters.empty()) {
             result.diagnostics.emplace_back(
@@ -307,7 +528,7 @@ LlvmIrResult generate_llvm_ir(const HirProgram& program) {
                 "LLVM IR generation does not yet support generic functions", function.span);
             break;
         }
-        output << FunctionEmitter(function, result.diagnostics).emit();
+        output << FunctionEmitter(function, functions, result.diagnostics).emit();
         if (!result.diagnostics.empty()) break;
         output << '\n';
     }

@@ -51,8 +51,9 @@ revalidation and clean reparse matching for repaired or invalid fragments.
 The source-aware symbol/reference index is available as an HIR snapshot API;
 editor-protocol integration remains. These boundaries remain visible rather
 than being claimed as language-level support. A separately tracked textual
-LLVM IR generator supports an initial scalar subset; there is no LLVM framework
-adapter, machine-code generation, executable runtime, tensor execution, or
+LLVM IR generator supports a 50% subset covering scalar functions, calls, and
+basic control flow; there is no LLVM framework adapter, machine-code generation,
+executable runtime, tensor execution, or
 device backend. The project is not production-ready: full conformance,
 coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
 policy remain.
@@ -69,7 +70,7 @@ policy remain.
 | Type checking and semantic validation | 15% | 99% | 14.85 | v1 declarations, generic functions/constraints, effects, limited ownership modes, expressions, calls, conversions, records, collections, tensor shapes, constants and conservative flow/return checks; full language and runtime semantics remain outside scope. |
 | Typed HIR and verification | 15% | 99% | 14.85 | AST lowering, stable symbols, AST/HIR JSON schema v2 and independent checks of types, scopes, identities, calls, ownership/effect metadata, mutability and return paths; deserialization and broader compatibility guarantees remain. |
 | CLI and diagnostics tooling | 5% | 99% | 4.95 | `check`, `tokens`, `ast`, `ast-json`, `typed`, `typed-json`, source excerpts, diagnostic JSON schema v1, and HIR symbol/reference index; editor-protocol integration and terminal display-width support remain. |
-| Tests, docs and integration | 10% | 99% | 9.90 | 23 passing CTest cases including AST scalability, symbol index, module/import/overload APIs, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
+| Tests, docs and integration | 10% | 99% | 9.90 | 25 passing CTest cases including AST scalability, symbol index, module/import/overload APIs, malformed-input smoke tests and installed-package consumer; full conformance, fuzzing, sanitizers and CI remain. |
 | **Total** | **100%** |  | **97.25%** | **Rounded display: 97%.** |
 
 Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 = 97.25`.

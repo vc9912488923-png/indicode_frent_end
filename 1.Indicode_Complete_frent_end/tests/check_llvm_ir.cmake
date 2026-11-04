@@ -12,6 +12,11 @@ endif()
 if(NOT llvm_ir MATCHES "define i32 @add" OR
    NOT llvm_ir MATCHES " = add i32 " OR
    NOT llvm_ir MATCHES " = icmp slt i16 " OR
-   NOT llvm_ir MATCHES " = xor i1 ")
-    message(FATAL_ERROR "LLVM IR output is missing expected scalar instructions: ${llvm_ir}")
+   NOT llvm_ir MATCHES " = xor i1 " OR
+   NOT llvm_ir MATCHES "if.then." OR
+   NOT llvm_ir MATCHES "while.cond." OR
+   NOT llvm_ir MATCHES "phi i1" OR
+    NOT llvm_ir MATCHES "call i32 @add" OR
+    NOT llvm_ir MATCHES "call void @done")
+    message(FATAL_ERROR "LLVM IR output is missing expected scalar/control-flow instructions: ${llvm_ir}")
 endif()

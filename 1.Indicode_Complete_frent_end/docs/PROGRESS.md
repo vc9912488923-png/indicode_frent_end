@@ -60,9 +60,10 @@ JSON use schema version 2.
   edits; tests compare results with clean parses.
 - **Packaging:** CMake installs/exports the library and CLI. A separate CMake
   consumer test verifies installed-package use.
-- **LLVM IR generator:** the initial 10% slice emits textual IR for a documented
-  scalar function subset from verified HIR. Unsupported constructs are rejected;
-  LLVM libraries/tools are not required or downloaded.
+- **LLVM IR generator:** 50% milestone. Textual IR covers scalar functions,
+  locals, arithmetic/comparisons, direct non-generic calls, `if`/`while`, and
+  short-circuit Boolean logic. Unsupported constructs are rejected; LLVM
+  libraries/tools are not required or downloaded.
 
 ## Weighted readiness estimate
 
@@ -115,8 +116,8 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
    and sanitizer gates.
 3. Add reproducible CI/release workflows and compatibility policies for the
    package and JSON schemas; test more compilers/platforms.
-4. Expand the separately tracked textual IR generator from its initial 10%
-  scalar subset only after each new lowering's semantics and tests are defined.
+4. Expand the separately tracked textual IR generator beyond its 50% milestone
+  only after each new lowering's semantics and tests are defined.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
 training, and device backends are outside package 0.9.8.

@@ -1,6 +1,6 @@
 # Indicode Front End
 
-**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a separate initial textual LLVM IR generator milestone. **This is not a complete compiler:** it does not generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
+**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a separate 50% textual LLVM IR generator milestone. **This is not a complete compiler:** it does not generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
 
 The defined front-end v1/API feature catalogue is **100% implemented and focused-tested (40/40 items, IDs 445–484)**. This feature-scope completion is distinct from the **97.25% weighted readiness estimate**; broader conformance, release/CI, fuzzing, sanitizer and compatibility work remains. The API-only module/import/overload resolvers are not connected to the single-file v1 parser, semantic analyzer or CLI, and the HIR symbol index is not an LSP server. AST and typed-HIR JSON use schema version 2; diagnostic JSON uses schema version 1. The source grammar contract is version 1.0.0, separate from the package version.
 
@@ -41,4 +41,4 @@ See [docs/PROGRESS.md](docs/PROGRESS.md) for measured progress, [docs/ROADMAP_BE
 
 ## Production readiness
 
-This is a buildable, tested front-end prototype with an initial textual IR slice, not a production-ready general-purpose compiler. Broader language conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy remain. Do not rely on it for production workloads.
+This is a buildable, tested front-end prototype with a 50% textual IR generator milestone, not a production-ready general-purpose compiler. Broader language conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy remain. Do not rely on it for production workloads.

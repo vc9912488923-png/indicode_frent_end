@@ -95,7 +95,7 @@ specification and semantic rules document exact syntax and limits.
 | Symbol/reference index | HIR snapshot library API implemented and tested | Editor/LSP integration if required |
 | Incremental parsing | Top-level fragment reuse implemented and tested | Expand editor-oriented workflows and benchmarks |
 | Release readiness | Not complete | CI, supported compiler/platform matrix, fuzzing, sanitizers, compatibility policy |
-| LLVM IR text output | Initial 10% scalar subset | Expand only with documented semantics and tests; no LLVM dependency |
+| LLVM IR text output | 50%: scalar subset, direct calls, `if`/`while`, short-circuit logic | Expand only with documented semantics and tests; no LLVM dependency |
 | Machine code/runtime | Out of scope | Separate future decision |
 
 The front-end catalogue is complete by item count, but these broader

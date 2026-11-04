@@ -10,3 +10,39 @@ function below(left: Int2, right: Int2) -> Bool {
 function invert(value: Bool) -> Bool {
     return !value
 }
+
+function choose(value: Bool) -> Int {
+    if value {
+        return 1
+    } else {
+        return 0
+    }
+}
+
+function countdown(start: Int) -> Int {
+    var current: Int = start
+    while current > 0 {
+        current = current - 1
+    }
+    return current
+}
+
+function both(left: Bool, right: Bool) -> Bool {
+    return left && right
+}
+
+function either(left: Bool, right: Bool) -> Bool {
+    return left || right
+}
+
+function call_named(value: Int) -> Int {
+    return add(right: 4, left: value)
+}
+
+function done(value: Int) {
+    return
+}
+
+function invoke(value: Int) {
+    done(value)
+}
