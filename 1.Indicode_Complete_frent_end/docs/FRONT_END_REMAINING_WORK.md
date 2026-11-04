@@ -9,7 +9,7 @@ For the consolidated progress, completed-work summary, percentage breakdown, and
 
 ## What “100%” means here
 
-The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. It does not generate LLVM IR, machine code, executables, or run programs.
+The front end reads source, checks it, reports source-aware errors, and produces a semantically valid, independently verified Indicode HIR. The separate textual LLVM IR generator is outside this front-end audit; machine-code generation, executables, and program execution remain unsupported.
 
 The current weighted front-end readiness estimate is **97.25%**, displayed as **97%**. The estimate includes broader conformance and release-readiness gaps; it is not the percentage of the catalogue or a measure of how much of a complete compiler exists.
 
@@ -92,8 +92,9 @@ weighted front-end readiness estimate is still 97.25%:
    compatibility policy for package and JSON formats, and broader supported-
    compiler/platform checks.
 5. **Language/backend scope:** document additional language/runtime semantics
-   before adding them. LLVM IR, machine-code generation, execution, tensor
-   operations, and device backends are not part of this package.
+   before expanding the separately tracked LLVM IR generator. Machine-code
+   generation, execution, tensor operations, and device backends are not part
+   of this package.
 
 ## What “40/40” and “97.25%” mean
 
@@ -107,8 +108,8 @@ machine-code compiler or runtime.
 
 ## Verification
 
-The current acceptance suite contains **23 CTest cases**. A fresh Release
-configure/build and all 23 tests pass. The suite covers source mapping,
+The current acceptance suite contains **25 CTest cases**. A fresh Release
+configure/build and all 25 tests pass. The suite covers source mapping,
 lexing/trivia, parser/AST/grammar, semantic analysis and HIR verification,
 diagnostics, symbol indexing, module/import/overload APIs, incremental parsing,
 CLI output and installed-package consumption. Passing tests establish the

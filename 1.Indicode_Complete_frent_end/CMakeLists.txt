@@ -20,6 +20,7 @@ add_library(indicode_frontend
     src/ast_json.cpp
     src/ast_visitor.cpp
     src/hir.cpp
+    src/llvm_ir.cpp
     src/symbol_index.cpp
     src/resolution.cpp
     src/diagnostic.cpp
@@ -100,6 +101,10 @@ if(BUILD_TESTING)
     target_link_libraries(indicode_hir_tests PRIVATE indicode_frontend)
     add_test(NAME hir_tests COMMAND indicode_hir_tests)
 
+    add_executable(indicode_llvm_ir_tests tests/llvm_ir_tests.cpp)
+    target_link_libraries(indicode_llvm_ir_tests PRIVATE indicode_frontend)
+    add_test(NAME llvm_ir_tests COMMAND indicode_llvm_ir_tests)
+
     add_executable(indicode_symbol_index_tests tests/symbol_index_tests.cpp)
     target_link_libraries(indicode_symbol_index_tests PRIVATE indicode_frontend)
     add_test(NAME symbol_index_tests COMMAND indicode_symbol_index_tests)
@@ -138,6 +143,12 @@ if(BUILD_TESTING)
             -DINDICODE=$<TARGET_FILE:indicode>
             -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/records.indi
             -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_typed_json.cmake
+    )
+    add_test(NAME cli_llvm_ir
+        COMMAND ${CMAKE_COMMAND}
+            -DINDICODE=$<TARGET_FILE:indicode>
+            -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/examples/ir_scalar.indi
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/check_llvm_ir.cmake
     )
     add_test(NAME cli_rejects_type_error COMMAND indicode check ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/type_error.indi)
     set_tests_properties(cli_rejects_type_error PROPERTIES WILL_FAIL TRUE)

@@ -2,8 +2,8 @@
 
 **Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
 
-**Status date:** 2026-11-03
-**Scope:** Indicode front end only; LLVM/backend/runtime work is excluded.
+**Status date:** 2026-11-04
+**Scope:** Indicode front end only; the separate textual LLVM IR generator is not included in the front-end readiness score.
 
 The companion [catalogue audit PDF](../Compiler_Front_End_Remaining_Work.pdf)
 contains the full 40-item checklist and remaining-work detail; it is generated
@@ -17,11 +17,12 @@ valid input to a typed HIR that is independently verified.
 
 | Measure | Current status |
 |---|---:|
+| Defined v1/API front-end catalogue implementation | **100% (40 / 40)** |
 | Weighted front-end readiness estimate | **97.25% (rounded to 97%)** |
 | Front-end catalogue items implemented and tested at their stated scope | **40 / 40** |
 | Partially implemented catalogue items | **0 / 40** |
 | Not started catalogue items | **0 / 40** |
-| Current CTest suite | **23 / 23 passed** |
+| Current CTest suite | **25 / 25 passed** |
 
 The 97.25% figure is a judgment-based, weighted estimate of front-end
 readiness, including release and conformance gaps. It is not the percentage
@@ -49,9 +50,10 @@ parsing is implemented at the source-edit level with revision-based
 revalidation and clean reparse matching for repaired or invalid fragments.
 The source-aware symbol/reference index is available as an HIR snapshot API;
 editor-protocol integration remains. These boundaries remain visible rather
-than being claimed as language-level support. There is no LLVM adapter,
-machine-code generation, executable runtime, tensor execution, or device
-backend. The project is not production-ready: full conformance,
+than being claimed as language-level support. A separately tracked textual
+LLVM IR generator supports an initial scalar subset; there is no LLVM framework
+adapter, machine-code generation, executable runtime, tensor execution, or
+device backend. The project is not production-ready: full conformance,
 coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
 policy remain.
 
@@ -73,6 +75,11 @@ policy remain.
 Calculation: `4.75 + 9.70 + 13.80 + 14.85 + 9.60 + 14.85 + 14.85 + 4.95 + 9.90 = 97.25`.
 
 ## What is implemented
+
+The front-end catalogue is complete at its documented v1/API acceptance scope
+(40/40 items). This is separate from the 97.25% weighted readiness estimate
+above and from the LLVM IR generator milestone, which is tracked independently
+in [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
 
 ### Source model and lexer
 
@@ -181,7 +188,7 @@ production/release readiness remain incomplete.
 ## Verification recorded for this report
 
 - A fresh Release CMake configure/build succeeds; the full CTest suite passes:
-  **23/23**.
+  **25/25**.
 - Covered tests include lexer/parser/AST/visitor/semantics/HIR/diagnostics,
   AST large-input destruction, symbol definitions/references/scopes/rebuild
   invalidation, module/import/overload resolver APIs, incremental parser

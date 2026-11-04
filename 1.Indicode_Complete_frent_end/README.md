@@ -1,8 +1,8 @@
 # Indicode Front End
 
-**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language, producing a checked and verified typed representation that could later be connected to a separate backend. **This is not a complete compiler:** it does not generate LLVM IR or machine code and does not execute programs. LLVM is not downloaded, vendored, or built here.
+**Package version: 0.9.8 (pre-release).** This project builds the C++20 front end for the proposed Indicode language and a separate initial textual LLVM IR generator milestone. **This is not a complete compiler:** it does not generate machine code, link, or execute programs. LLVM is not downloaded, vendored, or built here.
 
-The code audit confirms **40/40 catalogue items (IDs 445–484) have implementations and focused tests at their documented API or v1 scope**. This count is distinct from the **97.25% weighted readiness estimate**; conformance, release/CI, fuzzing, sanitizer and compatibility work remains. The API-only module/import/overload resolvers are not connected to the single-file v1 parser, semantic analyzer or CLI, and the HIR symbol index is not an LSP server. AST and typed-HIR JSON use schema version 2; diagnostic JSON uses schema version 1. The source grammar contract is version 1.0.0, separate from the package version.
+The defined front-end v1/API feature catalogue is **100% implemented and focused-tested (40/40 items, IDs 445–484)**. This feature-scope completion is distinct from the **97.25% weighted readiness estimate**; broader conformance, release/CI, fuzzing, sanitizer and compatibility work remains. The API-only module/import/overload resolvers are not connected to the single-file v1 parser, semantic analyzer or CLI, and the HIR symbol index is not an LSP server. AST and typed-HIR JSON use schema version 2; diagnostic JSON uses schema version 1. The source grammar contract is version 1.0.0, separate from the package version.
 
 Read the [detailed status report](docs/FRONT_END_STATUS_REPORT.md) and its [PDF](Compiler_Front_End_Status_Report.pdf), the [40-item code audit](docs/FRONT_END_REMAINING_WORK.md) and its [PDF](Compiler_Front_End_Remaining_Work.pdf), [docs/LANGUAGE_SPEC_V1.md](docs/LANGUAGE_SPEC_V1.md) for accepted syntax, [docs/SEMANTICS_V1.md](docs/SEMANTICS_V1.md) for static rules, [docs/AST_CONTEXT_V1.md](docs/AST_CONTEXT_V1.md) for AST ownership, [docs/DIAGNOSTICS_V1.md](docs/DIAGNOSTICS_V1.md) for diagnostic JSON, [docs/PROGRESS.md](docs/PROGRESS.md) for evidence and gaps, [docs/ROADMAP_BEGINNER.md](docs/ROADMAP_BEGINNER.md) for a plain-language guide, and [docs/COMMUNITY_RULES.md](docs/COMMUNITY_RULES.md) for contribution rules.
 
@@ -23,6 +23,7 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
 /tmp/indicode-build/indicode ast-json examples/records.indi
 /tmp/indicode-build/indicode typed examples/hello.indi
 /tmp/indicode-build/indicode typed-json examples/records.indi
+/tmp/indicode-build/indicode ir examples/ir_scalar.indi
 /tmp/indicode-build/indicode check examples/records.indi
 /tmp/indicode-build/indicode check examples/tensor_shapes.indi
 /tmp/indicode-build/indicode --json-diagnostics check tests/fixtures/type_error.indi
@@ -32,10 +33,12 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
 
 `typed-json` prints verified project-owned HIR in a JSON envelope with `schemaVersion: 2`, including source spans and symbol IDs for a future backend adapter.
 
+`ir` emits textual LLVM IR for the limited scalar subset documented in [LLVM_IR_GENERATOR_V0.md](docs/LLVM_IR_GENERATOR_V0.md). It requires no LLVM installation; LLVM verification, machine-code generation, and runtime linking are not provided.
+
 `ast-json` serializes the parsed AST before semantic analysis. Its version-2 JSON includes declarations, node kinds, generic/effect/ownership metadata, source spans, expression metadata, and nested statements. Diagnostic JSON is independently versioned at schema version 1.
 
 See [docs/PROGRESS.md](docs/PROGRESS.md) for measured progress, [docs/ROADMAP_BEGINNER.md](docs/ROADMAP_BEGINNER.md) for the plain-language roadmap and current syntax examples, and [docs/COMMUNITY_RULES.md](docs/COMMUNITY_RULES.md) for strict contribution rules.
 
 ## Production readiness
 
-This is a buildable, tested front-end prototype for the documented language subset, not a production-ready general-purpose compiler. It does not generate LLVM IR or executables and still needs broader language conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy. Do not rely on it for production workloads.
+This is a buildable, tested front-end prototype with an initial textual IR slice, not a production-ready general-purpose compiler. Broader language conformance, fuzzing/sanitizer coverage, CI/release practices, and a stable compatibility policy remain. Do not rely on it for production workloads.

@@ -1,15 +1,16 @@
 # Indicode Front-End Progress
 
 **Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
-**Updated:** 2026-11-03
+**Updated:** 2026-11-04
 
 ## Scope and status
 
 This C++20 package implements an Indicode compiler front end that reads source,
 builds an AST, performs supported name/type/semantic checks, and lowers valid
-input to project-owned typed HIR that is independently verified. It does not
-generate LLVM IR or machine code, execute programs, or provide tensor/device
-backends. LLVM is not downloaded, vendored, or built here.
+input to project-owned typed HIR that is independently verified. A separate
+textual LLVM IR generator milestone is tracked below. The project does not
+generate machine code, execute programs, or provide tensor/device backends.
+LLVM is not downloaded, vendored, or built here.
 
 The code audit found implementations and focused tests for all **40/40
 catalogue items (IDs 445-484)** at their stated v1 or public-API acceptance
@@ -59,6 +60,9 @@ JSON use schema version 2.
   edits; tests compare results with clean parses.
 - **Packaging:** CMake installs/exports the library and CLI. A separate CMake
   consumer test verifies installed-package use.
+- **LLVM IR generator:** the initial 10% slice emits textual IR for a documented
+  scalar function subset from verified HIR. Unsupported constructs are rejected;
+  LLVM libraries/tools are not required or downloaded.
 
 ## Weighted readiness estimate
 
@@ -87,8 +91,8 @@ should not be called fully production-ready.
 
 ## Verification
 
-The current CMake/CTest suite contains **23 tests**. A fresh Release configure,
-build, and `ctest --output-on-failure` run passed **23/23**. Coverage includes
+The current CMake/CTest suite contains **25 tests**. A fresh Release configure,
+build, and `ctest --output-on-failure` run passed **25/25**. Coverage includes
 source mapping, lexer payloads/trivia, grammar/operators, parser recovery,
 AST printing/visiting/scalability, semantics, HIR verification, resolution
 APIs, symbol indexing, incremental parsing, CLI JSON/diagnostics, and an
@@ -111,8 +115,8 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
    and sanitizer gates.
 3. Add reproducible CI/release workflows and compatibility policies for the
    package and JSON schemas; test more compilers/platforms.
-4. Build a separate, optional LLVM adapter only if/when backend generation is
-   in scope. Keep LLVM out of the default front-end build.
+4. Expand the separately tracked textual IR generator from its initial 10%
+  scalar subset only after each new lowering's semantics and tests are defined.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
 training, and device backends are outside package 0.9.8.

@@ -1,0 +1,12 @@
+function add(left: Int, right: Int) -> Int {
+    let result: Int = left + right
+    return result
+}
+
+function below(left: Int2, right: Int2) -> Bool {
+    return left < right
+}
+
+function invert(value: Bool) -> Bool {
+    return !value
+}

@@ -10,8 +10,9 @@ It can show tokens, an abstract syntax tree (AST), diagnostics, or a verified
 typed representation called HIR. It does **not** turn source into machine code
 or run programs, so it is a compiler front end, not a complete compiler.
 
-LLVM is a separate compiler framework. This project does not download, copy,
-or build LLVM. Any future LLVM adapter would be a separate, optional project.
+The project now emits a small subset of LLVM IR as text from verified HIR. It
+does not download, copy, or build LLVM; it also does not verify that text with
+LLVM, produce machine code, link, or run programs.
 
 ## Current status
 
@@ -19,7 +20,7 @@ The code audit found implementations and focused tests for all **40/40
 front-end catalogue items (IDs 445-484)** at their listed v1 or library-API
 scope. The broader weighted readiness estimate is **97.25% (rounded to 97%)**;
 that figure includes unfinished conformance, editor integration, release/CI,
-fuzzing, sanitizer, and compatibility work. Passing the current 23 tests does
+fuzzing, sanitizer, and compatibility work. Passing the current 25 tests does
 not prove that every possible Indicode program is supported.
 
 Some pieces are library APIs rather than language syntax:
@@ -80,8 +81,9 @@ specification and semantic rules document exact syntax and limits.
   tensors, broadcast shapes, or select devices.
 - AST and HIR JSON are serialization-only; deserialization and long-term
   compatibility guarantees are not implemented.
-- No LLVM IR, machine code, executable runtime, GPU/device backend, autodiff,
-  or training system is included.
+- No machine code, executable runtime, GPU/device backend, autodiff, or training
+  system is included. The initial IR subset and its limits are in
+  [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
 
 ## Roadmap
 
@@ -93,7 +95,8 @@ specification and semantic rules document exact syntax and limits.
 | Symbol/reference index | HIR snapshot library API implemented and tested | Editor/LSP integration if required |
 | Incremental parsing | Top-level fragment reuse implemented and tested | Expand editor-oriented workflows and benchmarks |
 | Release readiness | Not complete | CI, supported compiler/platform matrix, fuzzing, sanitizers, compatibility policy |
-| LLVM/backend/runtime | Out of scope | Separate decision and optional adapter project |
+| LLVM IR text output | Initial 10% scalar subset | Expand only with documented semantics and tests; no LLVM dependency |
+| Machine code/runtime | Out of scope | Separate future decision |
 
 The front-end catalogue is complete by item count, but these broader
 integration and release goals explain why the weighted readiness estimate is
@@ -109,7 +112,7 @@ cmake --build /tmp/indicode-build
 ctest --test-dir /tmp/indicode-build --output-on-failure
 ```
 
-All **23 CTest cases** pass in the audited Release build. For example:
+All **25 CTest cases** pass in the audited Release build. For example:
 
 ```sh
 /tmp/indicode-build/indicode check examples/hello.indi

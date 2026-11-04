@@ -17,9 +17,10 @@ These rules protect the project's scope, build size, maintainability, and commun
 - Never copy LLVM source, headers, libraries, binaries, or generated LLVM files into this repository.
 - Do not add LLVM downloads, network fetches, Git submodules, `FetchContent`, or required LLVM package discovery to the default configure/build.
 - The ordinary front-end build and tests must work without LLVM installed and without network access.
-- Keep Indicode's typed HIR and verifier owned by this project. They are the stable boundary for a later backend; they are not LLVM IR.
-- LLVM connection is a separate future adapter. It may use an LLVM installation supplied by the developer, must be opt-in and off by default, and must not make LLVM a prerequisite for front-end development. Do not hand-implement LLVM's IR or ABI as a substitute for its framework.
-- Any proposal to change these rules requires a documented community decision and a progress-document update before implementation.
+- Keep Indicode's typed HIR and verifier owned by this project; they remain distinct from LLVM IR.
+- A dependency-free textual LLVM IR generator is permitted as a separately documented milestone. It must consume verified HIR, reject unsupported constructs instead of emitting partial IR, and must not claim LLVM validation, machine-code generation, linking, execution, or ABI/runtime completeness.
+- Do not add LLVM downloads, network fetches, Git submodules, `FetchContent`, or required LLVM package discovery. Optional validation may use only LLVM tools already installed by the developer.
+- Any expansion beyond the documented generator subset requires a documented semantic decision, focused tests, and a progress-document update before implementation.
 
 ## 3. Progress Percentages Need Evidence
 

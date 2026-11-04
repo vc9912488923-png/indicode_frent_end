@@ -1,6 +1,7 @@
 #include "indicode/ast.hpp"
 #include "indicode/hir.hpp"
 #include "indicode/lexer.hpp"
+#include "indicode/llvm_ir.hpp"
 #include "indicode/parser.hpp"
 #include "indicode/sema.hpp"
 #include "indicode/token.hpp"
@@ -36,14 +37,14 @@ int main(int argc, char** argv) {
         ++argument;
     }
     if (argc - argument != 2) {
-        std::cerr << "usage: indicode [--json-diagnostics] <check|tokens|ast|ast-json|typed|typed-json> <file.indi>\n";
+        std::cerr << "usage: indicode [--json-diagnostics] <check|tokens|ast|ast-json|typed|typed-json|ir> <file.indi>\n";
         return 2;
     }
 
     const std::string command = argv[argument++];
     if (command != "check" && command != "tokens" && command != "ast" &&
         command != "ast-json" &&
-        command != "typed" && command != "typed-json") {
+        command != "typed" && command != "typed-json" && command != "ir") {
         std::cerr << "unknown command: " << command << '\n';
         return 2;
     }
@@ -106,6 +107,13 @@ int main(int argc, char** argv) {
         std::cout << indicode::print_hir(hir);
     } else if (command == "typed-json") {
         std::cout << indicode::serialize_hir_json(hir) << '\n';
+    } else if (command == "ir") {
+        auto generated = indicode::generate_llvm_ir(hir);
+        if (!generated.diagnostics.empty()) {
+            print_diagnostics(source_manager, source_id, generated.diagnostics, json_diagnostics);
+            return 1;
+        }
+        std::cout << generated.ir;
     } else {
         std::cout << "ok: " << source.name << '\n';
     }
