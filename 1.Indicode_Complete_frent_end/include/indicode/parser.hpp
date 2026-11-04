@@ -50,7 +50,7 @@ private:
     std::unique_ptr<Stmt> statement();
     std::unique_ptr<Stmt> variable_statement(bool mutable_binding, std::string declared_type = {});
     std::unique_ptr<Stmt> return_statement(const Token& keyword);
-    std::unique_ptr<Stmt> if_statement(const Token& keyword);
+    std::unique_ptr<Stmt> if_statement(const Token& keyword, bool negate_condition = false);
     std::unique_ptr<Stmt> while_statement(const Token& keyword);
     std::unique_ptr<Stmt> repeat_statement(const Token& keyword);
     std::unique_ptr<Stmt> for_each_statement(const Token& keyword);

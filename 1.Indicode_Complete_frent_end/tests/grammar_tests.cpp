@@ -33,13 +33,13 @@ std::unique_ptr<indicode::Expr> parse_expression(const std::string& expression) 
 }
 
 int main() {
-    require(indicode::grammar_version == "1.0.0",
+    require(indicode::grammar_version == "1.1.0",
             "public grammar version should match the versioned language specification");
     std::ifstream specification(INDICODE_SPEC_PATH);
     require(specification.good(), "versioned language specification should be present");
     const std::string specification_text{
         std::istreambuf_iterator<char>(specification), std::istreambuf_iterator<char>()};
-    require(specification_text.find("Grammar version:** 1.0.0") != std::string::npos,
+    require(specification_text.find("Grammar version:** 1.1.0") != std::string::npos,
             "public grammar version and normative specification version should agree");
     for (const auto* documented_operator : {"||", "&&", "..", "==", "!=", "<=", ">=", "+",
                                              "-", "*", "/", "%"}) {
@@ -47,7 +47,7 @@ int main() {
                 "normative specification should list every Pratt binary operator");
     }
     require(specification_text.find("Modules/imports") != std::string::npos,
-            "syntax outside grammar v1 should be explicitly scoped out");
+            "syntax outside grammar 1.1 should be explicitly scoped out");
 
     constexpr std::array operators{
         std::pair{"||", indicode::ExprKind::Binary},
@@ -113,6 +113,7 @@ int main() {
         "let values: List<Int> = [1, 2]\n"
         "var current = identity(values)[0]\n"
         "if true { current = current + 1 } else if false { current = 0 } else { return }\n"
+        "unless false { current = current + 1 } else unless true { current = 0 }\n"
         "while false { current = current - 1 }\n"
         "repeat 2 times { current = current + 1 }\n"
         "for item in 0..3 { current = current + item }\n"
@@ -121,8 +122,8 @@ int main() {
     const auto parsed = indicode::Parser(lexed.tokens).parse();
     require(lexed.diagnostics.empty() && parsed.diagnostics.empty() &&
                 parsed.program.records.size() == 1 && parsed.program.functions.size() == 1 &&
-                parsed.program.statements.size() == 6,
-            "every declaration and statement form in grammar v1 should parse");
+                parsed.program.statements.size() == 7,
+            "every declaration and statement form in grammar 1.1.0 should parse");
 
     const indicode::SourceFile unsupported{"unsupported.indi", "import library\n"};
     const auto unsupported_lexed = indicode::Lexer(unsupported).lex();

@@ -1,6 +1,6 @@
 # Parser recovery v1
 
-**Front-end package version:** 1.0.0.
+**Front-end package version:** 1.1.0.
 
 Parser recovery is best-effort and does not change whether a program is valid:
 any syntax diagnostic still makes the parse unsuccessful for compilation.

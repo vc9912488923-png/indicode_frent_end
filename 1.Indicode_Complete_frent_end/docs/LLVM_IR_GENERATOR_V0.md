@@ -10,10 +10,10 @@ textual LLVM IR. It does not download, build, or link LLVM libraries, invoke
 LLVM during normal compilation, produce machine code, provide a runtime, link
 programs, or execute them.
 
-**Completion: 100% of the documented single-file front-end v1 constructs have
+**Completion: 100% of the documented single-file grammar 1.1.0 constructs have
 a textual IR lowering.** This is feature-scope completion, not a claim of
 runtime/ABI completeness, test coverage, or production readiness. It excludes
-syntax and behavior outside the front-end v1 contract.
+syntax and behavior outside the grammar 1.1.0 contract.
 
 ## Lowered constructs
 
@@ -27,7 +27,8 @@ syntax and behavior outside the front-end v1 contract.
 - Arithmetic, comparisons, unary operators, checked-conversion helper calls,
   ownership markers as value-preserving wrappers, and short-circuit Boolean
   logic.
-- `if`/`else`/`else if`, `while`, `repeat`, and `for` over integer ranges,
+- `if`/`else`/`else if`/`unless`, `while`, `repeat`, and `for` over integer
+  ranges,
   lists, or text.
 - Record construction and member reads; list construction and indexing; text
   literals, indexing, and comparisons; range construction and iteration.

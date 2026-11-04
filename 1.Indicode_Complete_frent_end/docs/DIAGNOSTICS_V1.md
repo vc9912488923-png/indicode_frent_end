@@ -1,6 +1,6 @@
 # Diagnostic output schema v1
 
-**Front-end package version:** 1.0.0.
+**Front-end package version:** 1.1.0.
 This document versions diagnostic JSON independently from the package and from
 AST/HIR JSON.
 

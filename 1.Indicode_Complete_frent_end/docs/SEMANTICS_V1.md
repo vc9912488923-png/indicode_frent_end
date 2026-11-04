@@ -1,6 +1,6 @@
 # Indicode semantic rules v1
 
-**Front-end package version:** 1.0.0.
+**Front-end package version:** 1.1.0.
 
 These are the static rules implemented by the front end for syntax in
 [LANGUAGE_SPEC_V1.md](./LANGUAGE_SPEC_V1.md). They describe typing and binding,

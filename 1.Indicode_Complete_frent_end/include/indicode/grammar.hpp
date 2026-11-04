@@ -4,6 +4,6 @@
 
 namespace indicode {
 
-inline constexpr std::string_view grammar_version = "1.0.0";
+inline constexpr std::string_view grammar_version = "1.1.0";
 
 }

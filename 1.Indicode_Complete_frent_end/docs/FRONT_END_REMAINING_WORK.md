@@ -1,6 +1,6 @@
 # Compiler Front-End: Scope Audit and Deferred Work
 
-**Front-end package version:** 1.0.0.
+**Front-end package version:** 1.1.0.
 
 **Status date:** 2026-11-04
 **Scope:** Front-end v1/API code audit; together with the textual LLVM IR generator, it supports the completed front-end + IR milestone.
@@ -9,9 +9,9 @@ For the combined scope, completion result, IR coverage, and verification, see th
 
 ## What “100%” means here
 
-The front end reads supported source, checks it, reports source-aware errors, and produces independently verified typed HIR. The textual LLVM IR generator lowers the documented single-file v1 constructs from that HIR. Machine-code generation, executables, and program execution remain outside the requested scope.
+The front end reads supported source, checks it, reports source-aware errors, and produces independently verified typed HIR. The textual LLVM IR generator lowers the documented single-file grammar 1.1.0 constructs, including `unless`, from that HIR. Machine-code generation, executables, and program execution remain outside the requested scope.
 
-**Completion for this milestone:** the 40 front-end catalogue entries are implemented and focused-tested at their defined v1/API acceptance level, and the IR generator lowers all documented single-file v1 constructs. This is scoped feature completion, not a claim that every possible language feature or production/release criterion is complete.
+**Completion for this milestone:** the 40 front-end catalogue entries are implemented and focused-tested at their defined v1/API acceptance level, and the IR generator lowers all documented single-file grammar 1.1.0 constructs. This is scoped feature completion, not a claim that every possible language feature or production/release criterion is complete.
 
 The broader language/compiler catalogue contains 777 concepts. Only **40 catalogue entries (IDs 445–484)** are in its compiler-front-end section. In the current implementation audit:
 
@@ -37,14 +37,14 @@ Some catalogue entries are library APIs and are not integrated into the single-f
 | 448 | Line table | Implemented/tested | Indexed CR/LF/CRLF mapping in `source.cpp`; `source_tests`. |
 | 449 | Column mapping | Implemented/tested | Byte offsets, UTF-8 scalar columns, and four-column tabs; `source_tests`, `lexer_tests`, `diagnostic_tests`. Terminal display width remains unsupported. |
 | 450 | UTF-8 validator | Implemented/tested | `lexer.cpp`; invalid source encodings in tokens, strings, and comments tested in `lexer_tests`. |
-| 451 | Token kind | Implemented/tested | `TokenKind` and 17 keyword variants in `token.hpp`; token inventory tested in `lexer_tests`. |
+| 451 | Token kind | Implemented/tested | `TokenKind` and 18 keyword variants in `token.hpp`; token inventory tested in `lexer_tests`. |
 | 452 | Token payload | Implemented/tested | Typed keyword, integer, float, and string payloads in `token.hpp`/`lexer.cpp`; payload/spelling/span cases in `lexer_tests`. |
 | 453 | Lexer state | Implemented/tested | EOF and malformed-token recovery in `lexer.cpp`; focused and parser-robustness tests. |
 | 454 | Trivia preservation | Implemented/tested | Whitespace and line/nested-block comments retain spelling and spans in `lexer.cpp`; `lexer_tests`. |
 | 455 | Parser state | Implemented/tested | Explicit parser cursor and progress guard in `parser.cpp`; `parser_tests`, `parser_robustness_tests`. |
 | 456 | Recursive descent parser | Implemented/tested | `parser.cpp` parses declarations, statements, generic functions, ownership modes, and effects; `grammar_tests`, `parser_tests`. Modules/import syntax and overload declarations are not parsed. |
 | 457 | Pratt expression parser | Implemented/tested | `parser.cpp` precedence table; every binary operator, prefix nesting, calls/index/member tested in `grammar_tests`. |
-| 458 | Grammar version | Implemented/tested | `grammar.hpp` exposes 1.0.0; grammar/spec agreement tested in `grammar_tests`. Package version 1.0.0 is a separate version identifier. |
+| 458 | Grammar version | Implemented/tested | `grammar.hpp` exposes 1.1.0; grammar/spec agreement tested in `grammar_tests`. |
 | 459 | AST context | Implemented/tested | `ast.hpp` ownership plus `AST_CONTEXT_V1.md`; parser tests verify AST survives parser/source destruction. |
 | 460 | AST node arena | Implemented/tested | Deliberate `unique_ptr` ownership in `ast.hpp`; `ast_scalability_tests` parses/destroys 10,000 statements. No arena is used. |
 | 461 | AST visitor | Implemented/tested | `ast_visitor.hpp/.cpp`; `ast_visitor_tests` covers each declaration/statement/expression kind. |
@@ -99,7 +99,7 @@ textual IR scope; they are not blockers to its 100% scoped completion:
 The 40/40 result is a catalogue item count backed by implementations and
 focused tests; it includes standalone resolver and HIR-index APIs whose
 integration boundaries are stated above. The separate IR claim covers
-documented single-file v1 constructs. Together these establish the requested
+documented single-file grammar 1.1.0 constructs. Together these establish the requested
 scope, not every feature in the broader language or a complete machine-code
 compiler/runtime.
 

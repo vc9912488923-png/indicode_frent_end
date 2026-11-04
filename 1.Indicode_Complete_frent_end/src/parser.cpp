@@ -413,8 +413,9 @@ std::unique_ptr<Stmt> Parser::statement() {
     if (match_keyword("return")) {
         return return_statement(previous());
     }
-    if (match_keyword("if")) {
-        return if_statement(previous());
+    if (match_keyword("if") || match_keyword("unless")) {
+        const auto keyword = previous();
+        return if_statement(keyword, keyword.lexeme == "unless");
     }
     if (match_keyword("while")) {
         return while_statement(previous());
@@ -508,12 +509,24 @@ std::unique_ptr<Stmt> Parser::return_statement(const Token& keyword) {
     return result;
 }
 
-std::unique_ptr<Stmt> Parser::if_statement(const Token& keyword) {
+std::unique_ptr<Stmt> Parser::if_statement(const Token& keyword, bool negate_condition) {
     auto result = std::make_unique<Stmt>();
     result->kind = StmtKind::If;
     result->span.start = keyword.span.start;
     result->expression = expression();
-    if (!result->expression || consume(TokenKind::LeftBrace, "expected '{' after if condition") == nullptr ||
+    if (!result->expression) {
+        return nullptr;
+    }
+    if (negate_condition) {
+        auto negated_condition = std::make_unique<Expr>();
+        negated_condition->kind = ExprKind::Unary;
+        negated_condition->value = "!";
+        negated_condition->span = result->expression->span;
+        negated_condition->span.start = keyword.span.start;
+        negated_condition->left = std::move(result->expression);
+        result->expression = std::move(negated_condition);
+    }
+    if (consume(TokenKind::LeftBrace, "expected '{' after conditional condition") == nullptr ||
         !block(result->body)) {
         return nullptr;
     }
@@ -524,6 +537,12 @@ std::unique_ptr<Stmt> Parser::if_statement(const Token& keyword) {
                 return nullptr;
             }
             result->else_body.push_back(std::move(nested_if));
+        } else if (match_keyword("unless")) {
+            auto nested_unless = if_statement(previous(), true);
+            if (!nested_unless) {
+                return nullptr;
+            }
+            result->else_body.push_back(std::move(nested_unless));
         } else {
             if (consume(TokenKind::LeftBrace, "expected '{' after else") == nullptr ||
                 !block(result->else_body)) {

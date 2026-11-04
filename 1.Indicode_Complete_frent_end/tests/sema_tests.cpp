@@ -98,6 +98,25 @@ int main() {
                 generic_program.statements[3]->declared_type == "Int",
             "generic calls should infer nested type variables, forward constraints, and substitute return types");
 
+    const indicode::SourceFile unless_source{
+        "unless.indi",
+        "function guarded(value: Bool) -> Int { unless value { return 0 } else { return 1 } }\n"
+    };
+    auto unless_program = parse_source(unless_source);
+    require(indicode::Analyzer().analyze(unless_program).diagnostics.empty(),
+            "unless should use standard Bool conditional checking");
+
+    const indicode::SourceFile invalid_unless_source{
+        "invalid_unless.indi",
+        "function guarded(value: Int) { unless value { say(value) } }\n"
+    };
+    auto invalid_unless_program = parse_source(invalid_unless_source);
+    const auto invalid_unless_result = indicode::Analyzer().analyze(invalid_unless_program);
+    require(std::any_of(invalid_unless_result.diagnostics.begin(),
+                        invalid_unless_result.diagnostics.end(),
+                        [](const auto& diagnostic) { return diagnostic.code == "E-SEMA-014"; }),
+            "unless should reject non-Bool conditions as an invalid logical-negation operand");
+
     const indicode::SourceFile invalid_generic_source{
         "invalid_generic.indi",
         "function add<T: Numeric>(left: T, right: T) -> T { return left + right }\n"

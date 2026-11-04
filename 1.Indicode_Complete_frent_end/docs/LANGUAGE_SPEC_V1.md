@@ -1,8 +1,8 @@
 # Indicode Front-End Language Specification
 
-**Front-end package version:** 1.0.0.
+**Front-end package version:** 1.1.0.
 
-**Grammar version:** 1.0.0
+**Grammar version:** 1.1.0
 **Status:** Normative for the syntax accepted by this front-end release.
 
 This specification defines the source syntax parsed by the C++20 front end. It
@@ -20,14 +20,14 @@ Static binding and typing rules are specified separately in
 Source is UTF-8. Invalid UTF-8 is diagnosed. Identifiers are ASCII and have the
 form `[A-Za-z_][A-Za-z0-9_]*`. The reserved words are:
 
-`function record return if else repeat times for in while let var true false move borrow borrow_mut`
+`function record return if else unless repeat times for in while let var true false move borrow borrow_mut`
 
 Integer literals are decimal, binary (`0b`), octal (`0o`), or hexadecimal
 (`0x`), with underscores permitted only between valid digits. Decimal floating
 literals have digits after a decimal point and/or a decimal exponent. A string is a
 double-quoted, single-line sequence supporting `\"`, `\\`, `\n`, `\r`, `\t`,
 `\0`, and Unicode scalar escapes `\u{...}`. Numeric suffixes, raw strings,
-Unicode identifiers, and multiline strings are not part of v1.
+Unicode identifiers, and multiline strings are not part of grammar 1.1.
 
 Punctuation and operators are `(` `)` `{` `}` `[` `]` `,` `:` `.` `..` `;`
 `->` `+` `-` `*` `/` `%` `!` `~` `=` `==` `!=` `<` `<=` `>` `>=` `&&` and
@@ -76,7 +76,8 @@ statement        = "let", identifier, [ ":", type ], "=", expression
                  | "repeat", expression, "times", block
                  | "for", identifier, "in", expression, block
                  | expression ;
-conditional      = "if", expression, block, [ "else", (block | conditional) ] ;
+conditional      = ( "if" | "unless" ), expression, block,
+                   [ "else", (block | conditional) ] ;
 expression       = prefix-expression, { binary-operator, prefix-expression } ;
 prefix-expression
                  = ( "!" | "+" | "-" | "~" | "move" | "borrow" | "borrow_mut" ),
@@ -102,8 +103,13 @@ separator        = newline | ";" ;
 
 The parser rejects positional call arguments after a named argument. Calls and
 record construction use the same syntax; semantic analysis resolves the name.
-The `if` production is recursively nestable, so any-length `else if` chains
-are accepted. The legacy `identifier identifier = expression` declaration form is the
+The conditional production is recursively nestable, so any-length `else if`
+and `else unless` chains are accepted. `unless condition { ... }` is
+semantically equivalent to `if !condition { ... }`; its condition must be
+`Bool`, and its parsed AST/HIR reuses the ordinary conditional representation.
+The AST stores the negated condition, so the original `unless` spelling is not
+preserved by AST printing or later compiler stages.
+The legacy `identifier identifier = expression` declaration form is the
 non-generic `type identifier` alternative above. Generic function declarations
 support inferred type parameters and the `Numeric` and `Integer` constraints;
 generic record declarations are not supported. Parameter ownership modes and
@@ -111,7 +117,7 @@ function effect annotations are part of the parsed syntax and are checked by
 the semantic analyzer.
 
 Modules/imports, overload declarations, and declaration visibility are
-explicitly outside grammar v1. `List<T>` and `Range<T>` use the single-type-
+explicitly outside grammar 1.1. `List<T>` and `Range<T>` use the single-type-
 argument generic type form accepted by the parser; tensor types use the
 dedicated shape form shown above.
 

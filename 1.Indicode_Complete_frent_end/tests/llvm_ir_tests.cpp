@@ -39,6 +39,7 @@ int main() {
         "function bitwise_not(value: Int) -> Int { return ~value }\n"
         "function invert(value: Bool) -> Bool { return !value }\n"
         "function choose(value: Bool) -> Int { if value { return 1 } else { return 0 } }\n"
+        "function choose_unless(value: Bool) -> Int { unless value { return 0 } else { return 1 } }\n"
         "function countdown(start: Int) -> Int {\n"
         "    var current: Int = start\n"
         "    while current > 0 { current = current - 1 }\n"
@@ -92,11 +93,13 @@ int main() {
         "function print_chars(text: Text) { for character in text { say(character) } }\n");
     require(supported.diagnostics.empty(), "scalar functions should generate IR");
     require(supported.ir.find("define i32 @add(i32 %in.") != std::string::npos &&
+                supported.ir.find("define i32 @choose_unless(i1 %in.") != std::string::npos &&
                 supported.ir.find(" = add i32 ") != std::string::npos &&
                 supported.ir.find(" = icmp ult i16 ") != std::string::npos &&
                 supported.ir.find(" = sdiv i64 ") != std::string::npos &&
                 supported.ir.find(" = urem i64 ") != std::string::npos &&
                 supported.ir.find(" = xor i32 ") != std::string::npos &&
+                supported.ir.find(" = xor i1 ") != std::string::npos &&
                 supported.ir.find(" = fadd float ") != std::string::npos &&
                 supported.ir.find(" = fadd half ") != std::string::npos &&
                 supported.ir.find(" = fcmp olt double ") != std::string::npos &&

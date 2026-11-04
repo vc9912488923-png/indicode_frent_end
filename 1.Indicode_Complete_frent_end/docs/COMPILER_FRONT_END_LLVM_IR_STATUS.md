@@ -1,25 +1,26 @@
 # Indicode Compiler Front-End and LLVM IR Status
 
 **Status date:** 2026-11-04  
-**Package version:** 1.0.0
-**Grammar version:** 1.0.0  
+**Package version:** 1.1.0
+**Grammar version:** 1.1.0
 **Milestone:** Compiler front end plus textual LLVM IR generation; no machine-code backend.
 
 ## Executive summary
 
 The requested milestone is complete **within the documented single-file
-front-end v1 and public-API scope**:
+grammar 1.1.0 and public-API scope**:
 
 | Area | Completion | Evidence |
 |---|---:|---|
 | Front-end v1/API feature catalogue | **100% (40/40 items)** | Implementation and focused tests at each item's documented acceptance level; IDs 445–484 |
-| Textual LLVM IR lowering | **100% of documented single-file v1 constructs** | IR generator tests and optional LLVM assembly/verifier tests |
+| Textual LLVM IR lowering | **100% of documented single-file grammar 1.1.0 constructs** | IR generator tests and optional LLVM assembly/verifier tests |
 | Combined front-end + textual IR milestone | **100% of the defined scope** | The supported source subset lowers through verified HIR to textual LLVM IR |
 | Current test run | **28/28 passed** | 26 base CTest cases and two optional tests using already-installed `llvm-as` and `opt` |
 
 This is a scoped feature-completion statement, **not** a claim that every
 conceivable Indicode feature or a production-ready compiler is complete. The
-front end accepts the documented single-file v1 grammar. A few separately
+front end accepts the documented single-file grammar 1.1.0, including
+`unless` conditionals. A few separately
 implemented resolver/index library APIs are not connected to that grammar or
 an LSP. The exact accepted syntax is in
 [LANGUAGE_SPEC_V1.md](./LANGUAGE_SPEC_V1.md); static rules are in
@@ -29,13 +30,14 @@ an LSP. The exact accepted syntax is in
 
 The front end reads source, tokenizes and parses supported constructs, checks
 names/types/semantics, produces typed HIR, and independently verifies that
-HIR. The IR generator then lowers all documented single-file v1 constructs
-from verified HIR to textual LLVM IR.
+HIR. The IR generator then lowers all documented single-file grammar 1.1.0
+constructs from verified HIR to textual LLVM IR, including `unless` lowered through the
+existing conditional representation.
 
 | Front-end area | Delivered v1/API scope |
 |---|---|
 | Source and diagnostics | Source buffers/spans, line and column mapping, UTF-8 validation, source-aware diagnostics, fix-its, and diagnostic JSON |
-| Lexer and parser | Documented token/literal forms, recursive-descent declarations/statements, Pratt expressions, recovery, grammar version 1.0.0 |
+| Lexer and parser | Documented token/literal forms, recursive-descent declarations/statements, Pratt expressions, recovery, `unless`, grammar version 1.1.0 |
 | AST | Owned AST, deterministic printer, visitor, JSON schema v2, documented ownership/lifetime |
 | Names and semantics | Lexical scopes, stable symbols, name/type checks, generic `Numeric`/`Integer` inference, effects, limited ownership checks, constant and control-flow checks |
 | Typed HIR | AST lowering, schema-versioned output, independent validation of supported types, scopes, calls, effects, ownership metadata, and returns |
@@ -55,7 +57,7 @@ catalogue at its stated v1/API scope.
 | Functions and calls | Non-generic functions; on-demand generic specialization, including nested and recursive generic calls |
 | Values and data | Parameters, locals, globals, assignment, records, lists, ranges, text, and opaque-pointer tensor values |
 | Expressions | Integer/floating arithmetic, comparisons, unary operators, checked-conversion helper calls, ownership wrappers, short-circuit Boolean logic |
-| Control flow | `if`/`else if`/`else`, `while`, `repeat`, and `for` over integer ranges, lists, or text |
+| Control flow | `if`/`else if`/`else`/`unless`, `while`, `repeat`, and `for` over integer ranges, lists, or text |
 | Program initialization | Generated `indicode_entry` initializer when top-level statements exist |
 | Output | Valid textual LLVM IR for supported constructs; failures produce diagnostics rather than partial IR |
 
@@ -73,7 +75,7 @@ requested front-end + textual-IR milestone:
   conversions, text, and list helpers.
 - Tensor operations/device execution; v1 tensor values are opaque pointers.
 - Module/import compilation, overload syntax, generic record declarations,
-  explicit generic call-site arguments, and syntax not accepted by grammar v1.
+  explicit generic call-site arguments, and syntax not accepted by grammar 1.1.
 - Full lifetime/escape analysis, LSP/editor protocol, sanitizer/fuzz/release
   gates, and production compatibility guarantees.
 

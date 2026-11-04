@@ -1,6 +1,6 @@
 # Indicode Front-End Progress
 
-**Package version:** 1.0.0.
+**Package version:** 1.1.0.
 **Updated:** 2026-11-04
 
 ## Scope and status
@@ -8,21 +8,22 @@
 This C++20 package implements the documented Indicode front end and textual
 LLVM IR generator milestone. It reads supported source, builds an AST, checks
 names/types/semantics, independently verifies typed HIR, and lowers supported
-single-file v1 constructs to textual LLVM IR. It does not generate machine
+single-file grammar 1.1.0 constructs to textual LLVM IR. It does not generate machine
 code, execute programs, or provide tensor/device backends. LLVM is not
 downloaded, vendored, or built here.
 
 The code audit found implementations and focused tests for all **40/40
 catalogue items (IDs 445-484)** at their stated v1 or public-API acceptance
 level. The textual LLVM IR generator lowers **100% of documented single-file
-v1 constructs**. Together, these complete the requested milestone within its
+grammar 1.1.0 constructs**. Together, these complete the requested milestone within its
 declared scope. This does not claim that every API is integrated into source
 syntax or that the full language/backend is complete. See the [combined
 status report](./COMPILER_FRONT_END_LLVM_IR_STATUS.md), the [front-end status
 page](./FRONT_END_STATUS_REPORT.md), and the [40-item code audit](./FRONT_END_REMAINING_WORK.md).
 
-The source grammar contract is **1.0.0**; it is separate from the package
-version **1.0.0**. Diagnostic JSON uses schema version 1. AST JSON and typed-HIR
+The source grammar contract and package version are **1.1.0**. Grammar 1.1
+adds `unless`, equivalent to an `if` with a negated Bool condition. Diagnostic
+JSON uses schema version 1. AST JSON and typed-HIR
 JSON use schema version 2.
 
 ## Implemented code areas
@@ -34,10 +35,11 @@ JSON use schema version 2.
   raw strings, and multiline strings are not supported.
 - **Grammar and AST:** recursive-descent declarations/statements and Pratt
   expressions; records, lists, calls/named arguments, indexing/member access,
-  loops/ranges, nested `else if`, generic function declarations, ownership
-  parameter modes, and effect annotations. Recovery, deterministic printing,
+  loops/ranges, nested `else if`, `unless` conditionals, generic function
+  declarations, ownership parameter modes, and effect annotations. Recovery,
+  deterministic printing,
   exhaustive visitors, AST JSON v2, and the `unique_ptr` ownership contract
-  are tested. Grammar version 1.0.0 excludes module/import syntax, overload
+  are tested. Grammar version 1.1.0 excludes module/import syntax, overload
   declarations, and generic record declarations.
 - **Names and semantics:** lexical scopes, stable symbol IDs, name/type
   checking, generic `Numeric`/`Integer` constraint inference and substitution,
@@ -60,8 +62,8 @@ JSON use schema version 2.
   edits; tests compare results with clean parses.
 - **Packaging:** CMake installs/exports the library and CLI. A separate CMake
   consumer test verifies installed-package use.
-- **LLVM IR generator:** 100% of documented single-file front-end v1
-  constructs lower to textual IR, including generic function
+- **LLVM IR generator:** 100% of documented single-file grammar 1.1.0
+  constructs lower to textual IR, including `unless` and generic function
   monomorphization, globals, records/collections, and control flow. This is not
   runtime or ABI completeness: helper implementations, machine-code
   generation, linking, and execution are outside scope. Tensor operations,
@@ -73,7 +75,7 @@ JSON use schema version 2.
 | Milestone measure | Completion |
 |---|---:|
 | Front-end v1/API catalogue | **40/40 (100%)** |
-| Textual LLVM IR lowering of documented single-file v1 constructs | **100%** |
+| Textual LLVM IR lowering of documented single-file grammar 1.1 constructs | **100%** |
 | Combined requested front-end + IR milestone | **100% within the stated scope** |
 | Current test suite in this environment | **28/28 passed** |
 
@@ -113,4 +115,4 @@ ctest --test-dir /tmp/indicode-build --output-on-failure
    milestone.
 
 Tensor execution, machine-code generation, runtime behavior, autodiff,
-training, and device backends are outside package 1.0.0.
+training, and device backends are outside package 1.1.0.

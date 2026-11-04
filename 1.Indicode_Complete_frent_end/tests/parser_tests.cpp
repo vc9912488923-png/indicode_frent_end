@@ -203,6 +203,26 @@ int main() {
                 else_if_parsed.program.functions[0].body[0]->else_body[0]->kind == indicode::StmtKind::If,
             "else-if chains should parse as nested conditional statements");
 
+    const indicode::SourceFile unless_source{
+        "unless.indi",
+        "function guard(ready: Bool) -> Int {\n"
+        "  unless ready { return 0 } else unless ready == false { return 1 } else { return 2 }\n"
+        "}\n"
+    };
+    const auto unless_lexed = indicode::Lexer(unless_source).lex();
+    const auto unless_parsed = indicode::Parser(unless_lexed.tokens).parse();
+    require(unless_lexed.diagnostics.empty() && unless_parsed.diagnostics.empty() &&
+                unless_parsed.program.functions.size() == 1 &&
+                unless_parsed.program.functions[0].body.size() == 1,
+            "unless and else unless should parse cleanly");
+    const auto& unless_statement = unless_parsed.program.functions[0].body[0];
+    require(unless_statement->kind == indicode::StmtKind::If &&
+                unless_statement->expression->kind == indicode::ExprKind::Unary &&
+                unless_statement->expression->value == "!" &&
+                unless_statement->else_body[0]->kind == indicode::StmtKind::If &&
+                unless_statement->else_body[0]->expression->kind == indicode::ExprKind::Unary,
+            "unless and else unless should parse as negated ordinary conditional branches");
+
     const indicode::SourceFile escaped_source{"escaped.indi", "say(\"a\\\"b\")\n"};
     const auto escaped_lexed = indicode::Lexer(escaped_source).lex();
     const auto escaped_parsed = indicode::Parser(escaped_lexed.tokens).parse();

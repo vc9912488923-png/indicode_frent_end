@@ -225,13 +225,13 @@ int main() {
                           }) == 3,
             "preserving block-comment trivia must retain its newline separator tokens");
 
-    constexpr std::array<indicode::Keyword, 17> keywords{
+    constexpr std::array<indicode::Keyword, 18> keywords{
         indicode::Keyword::Function, indicode::Keyword::Record, indicode::Keyword::Return,
         indicode::Keyword::If, indicode::Keyword::Else, indicode::Keyword::Repeat,
         indicode::Keyword::Times, indicode::Keyword::For, indicode::Keyword::In,
         indicode::Keyword::While, indicode::Keyword::Let, indicode::Keyword::Var,
         indicode::Keyword::True, indicode::Keyword::False, indicode::Keyword::Move,
-        indicode::Keyword::Borrow, indicode::Keyword::BorrowMut
+        indicode::Keyword::Borrow, indicode::Keyword::BorrowMut, indicode::Keyword::Unless
     };
     std::string keyword_source;
     for (const auto keyword : keywords) {
@@ -247,7 +247,7 @@ int main() {
                               [](const indicode::Token& token) {
                                   return token.kind == indicode::TokenKind::Keyword;
                               }) == static_cast<std::ptrdiff_t>(keywords.size()),
-            "lexer should classify exactly the complete v1 reserved-word inventory");
+            "lexer should classify exactly the complete reserved-word inventory");
 
     constexpr std::array<std::pair<std::string_view, indicode::TokenKind>, 28> punctuation{{
         std::pair<std::string_view, indicode::TokenKind>{"(", indicode::TokenKind::LeftParen},
