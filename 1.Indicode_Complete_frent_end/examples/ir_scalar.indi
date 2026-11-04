@@ -1,3 +1,10 @@
+record Point {
+    x: Int,
+    y: Int
+}
+
+answer = 42
+
 function add(left: Int, right: Int) -> Int {
     let result: Int = left + right
     return result
@@ -27,6 +34,12 @@ function countdown(start: Int) -> Int {
     return current
 }
 
+function implicit_local() -> Int {
+    value = 2
+    value = value + 3
+    return value
+}
+
 function both(left: Bool, right: Bool) -> Bool {
     return left && right
 }
@@ -45,4 +58,82 @@ function done(value: Int) {
 
 function invoke(value: Int) {
     done(value)
+}
+
+function float_sum(left: Float, right: Float) -> Float {
+    return left + right
+}
+
+function below_float(left: Double, right: Double) -> Bool {
+    return left < right
+}
+
+function float_literal() -> Float {
+    return 1.25
+}
+
+function converted(input: Int) -> Long {
+    return to_Long(input, checked: true)
+}
+
+function announces(value: Int) {
+    say(value)
+}
+
+function make_point(x: Int) -> Point {
+    return Point(y: 2, x: x)
+}
+
+function point_x(point: Point) -> Int {
+    return point.x
+}
+
+function first_item(values: List<Int>) -> Int {
+    return values[0]
+}
+
+function make_items() -> List<Int> {
+    return [1, 2, 3]
+}
+
+function first_char(text: Text) -> Char {
+    return text[0]
+}
+
+function same_text(left: Text, right: Text) -> Bool {
+    return left == right
+}
+
+function greeting() -> Text {
+    return "hello\nworld"
+}
+
+function range_total() -> Int {
+    var total: Int = 0
+    for index in 0..5 {
+        total = total + index
+    }
+    return total
+}
+
+function repeat_total(count: Int) -> Int {
+    var total: Int = 0
+    repeat count times {
+        total = total + 1
+    }
+    return total
+}
+
+function list_total(values: List<Int>) -> Int {
+    var total: Int = 0
+    for item in values {
+        total = total + item
+    }
+    return total
+}
+
+function print_chars(text: Text) {
+    for character in text {
+        say(character)
+    }
 }

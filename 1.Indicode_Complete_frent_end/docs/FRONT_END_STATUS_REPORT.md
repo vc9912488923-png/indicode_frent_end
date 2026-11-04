@@ -51,9 +51,10 @@ revalidation and clean reparse matching for repaired or invalid fragments.
 The source-aware symbol/reference index is available as an HIR snapshot API;
 editor-protocol integration remains. These boundaries remain visible rather
 than being claimed as language-level support. A separately tracked textual
-LLVM IR generator supports a 50% subset covering scalar functions, calls, and
-basic control flow; there is no LLVM framework adapter, machine-code generation,
-executable runtime, tensor execution, or
+LLVM IR generator is estimated at about 70% of its planned single-file v1
+lowering scope; see [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md) for
+implemented areas and gaps. It does not provide an LLVM framework adapter,
+machine-code generation, runtime helper implementations, tensor operations, or
 device backend. The project is not production-ready: full conformance,
 coverage-guided fuzzing, sanitizer gates, release CI, and compatibility/ABI
 policy remain.

@@ -1,7 +1,7 @@
 # Indicode Front-End Guide and Roadmap
 
 **Front-end package version:** 0.9.8 (pre-release; not a complete compiler).
-**Updated:** 2026-11-03
+**Updated:** 2026-11-04
 
 ## What is this project?
 
@@ -10,9 +10,9 @@ It can show tokens, an abstract syntax tree (AST), diagnostics, or a verified
 typed representation called HIR. It does **not** turn source into machine code
 or run programs, so it is a compiler front end, not a complete compiler.
 
-The project now emits a small subset of LLVM IR as text from verified HIR. It
-does not download, copy, or build LLVM; it also does not verify that text with
-LLVM, produce machine code, link, or run programs.
+The project emits a subset of LLVM IR as text from verified HIR. It does not
+download, copy, or build LLVM; compatible installed LLVM tools can optionally
+verify that text. It does not produce machine code, link, or run programs.
 
 ## Current status
 
@@ -82,7 +82,7 @@ specification and semantic rules document exact syntax and limits.
 - AST and HIR JSON are serialization-only; deserialization and long-term
   compatibility guarantees are not implemented.
 - No machine code, executable runtime, GPU/device backend, autodiff, or training
-  system is included. The initial IR subset and its limits are in
+  system is included. The current IR subset and its limits are in
   [LLVM_IR_GENERATOR_V0.md](./LLVM_IR_GENERATOR_V0.md).
 
 ## Roadmap
@@ -95,7 +95,7 @@ specification and semantic rules document exact syntax and limits.
 | Symbol/reference index | HIR snapshot library API implemented and tested | Editor/LSP integration if required |
 | Incremental parsing | Top-level fragment reuse implemented and tested | Expand editor-oriented workflows and benchmarks |
 | Release readiness | Not complete | CI, supported compiler/platform matrix, fuzzing, sanitizers, compatibility policy |
-| LLVM IR text output | 50%: scalar subset, direct calls, `if`/`while`, short-circuit logic | Expand only with documented semantics and tests; no LLVM dependency |
+| LLVM IR text output | About 70% estimated: scalar/float values, calls, records/lists/text, globals, conversions, and control flow | Add generic and tensor lowering; keep runtime helpers and LLVM optional |
 | Machine code/runtime | Out of scope | Separate future decision |
 
 The front-end catalogue is complete by item count, but these broader

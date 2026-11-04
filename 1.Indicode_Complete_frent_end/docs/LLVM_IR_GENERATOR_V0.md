@@ -1,35 +1,55 @@
 # LLVM IR Generator v0
 
 The front end and textual IR generator are separate milestones. The generator
-consumes verified project-owned HIR and writes LLVM IR text; it does not use or
-download LLVM libraries, invoke LLVM tools, produce machine code, link, or run
-programs. Use `indicode ir file.indi` to write the IR to standard output.
+consumes verified project-owned HIR and writes LLVM IR text. It does not link
+LLVM libraries, download or build LLVM, invoke LLVM as part of normal builds,
+produce machine code, link programs, or execute them.
 
-## Initial supported slice
+The current implementation is estimated at **about 70% of the planned
+single-file v1-to-LLVM-IR lowering scope**. This is a scope estimate, not a
+test-coverage percentage or a compiler-wide readiness score. The front-end
+readiness estimate is tracked separately in [PROGRESS.md](./PROGRESS.md).
 
-- Non-generic functions with scalar `Bool`, `Byte`, `U8`, `Int2`, `UInt2`,
-  `Int`, `UInt`, `Long`, and `ULong` values, plus `Void` function returns.
-- Parameters, local scalar variables, assignment, arithmetic, comparisons,
-  unary `+`, `-`, `~`, `!`, ownership markers as value-preserving wrappers,
-    and returns. Local variables in nested `if`/`while` bodies are supported.
-- Signedness-sensitive integer division, remainder, and ordered comparisons.
-- `if`/`else` and `while` control flow, plus short-circuit `&&` and `||`.
-- Direct calls to non-generic user functions, including named arguments. Call
-    operands are emitted in parameter order while expressions are evaluated in
-    source order.
+## Implemented lowering
 
-Integer mappings follow the front-end's existing range rules: `Byte`/`U8` map
-to `i8`, `Int2`/`UInt2` to `i16`, `Int`/`UInt` to `i32`, and `Long`/`ULong`
-to `i64`; `Bool` maps to `i1`. LLVM arithmetic without overflow flags follows
-LLVM's integer behavior. This is an IR mapping, not a complete Indicode runtime
-semantics or ABI guarantee.
+- Non-generic functions, parameters, locals, top-level globals and an
+  `indicode_entry` initializer function.
+- `Bool`, integer types (`Byte`, `U8`, `Int2`, `UInt2`, `Int`, `UInt`, `Long`,
+  `ULong`), floating-point types (`Half`, `Float`, `Double`), `Char`, `Text`,
+  records, lists, and ranges.
+- Assignments, returns, arithmetic, comparisons, unary operators, checked
+  numeric conversions, ownership markers as value-preserving wrappers, and
+  direct calls to declared non-generic functions.
+- `if`/`else`, `while`, `repeat`, `for` over ranges/lists/text, and short-circuit
+  `&&`/`||`.
+- Record construction/member reads; list construction/indexing; text
+  literals/indexing/comparison; and range construction/iteration.
+- Named call arguments are evaluated in source order and passed in parameter
+  order.
 
-Built-in calls (`say` and conversions), generic functions, `repeat`/`for`
-loops, globals, records, lists, ranges, text, floating-point values, and
-tensors are not implemented in v0. Encountering unsupported constructs returns
-an error diagnostic and no partial IR. The output has no target triple or data
-layout.
+Integer mappings follow the front end's range rules: `Byte`/`U8` map to `i8`,
+`Int2`/`UInt2` to `i16`, `Int`/`UInt` to `i32`, and `Long`/`ULong` to `i64`.
+`Bool` maps to `i1`, `Char` to `i32`, and floating-point types to their
+corresponding LLVM types. Arithmetic is emitted without overflow flags. This
+is an IR mapping, not a complete Indicode runtime semantics or ABI guarantee.
 
-This is the 50% implementation milestone of the separately tracked IR
-generator, not a complete backend. LLVM validation is possible only when a
-compatible LLVM tool is already installed locally.
+## Not implemented or incomplete
+
+- Generic function lowering/specialization and multi-file module compilation.
+- Tensor construction and operations. Tensor values can only pass through as
+  opaque pointers where the HIR already provides a value.
+- Runtime implementations for `say`, checked conversions, text, and list
+  helpers. The IR declares these helpers, but does not define or link them.
+- Target triple, data layout, target-specific ABI, machine-code generation,
+  linking, and execution.
+
+Unsupported constructs produce diagnostics instead of partial IR. The output
+uses opaque pointers and should be validated with a compatible LLVM tool if one
+is already installed. LLVM tools are optional and are not downloaded or
+required by the build. For example:
+
+```sh
+/tmp/indicode-build/indicode ir examples/ir_scalar.indi > /tmp/indicode.ll
+llvm-as /tmp/indicode.ll -o /tmp/indicode.bc
+opt -passes=verify -disable-output /tmp/indicode.bc
+```
